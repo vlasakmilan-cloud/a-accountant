@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Upload, Send, Mic, FileText, DollarSign, TrendingUp, AlertTriangle, 
@@ -5,11 +6,11 @@ import {
   Calendar, BarChart3, MessageSquare, Calculator, Sparkles, Brain,
   Zap, Shield, Globe, ChevronRight, Home, Users, Building, CreditCard,
   Database, Lock, Bell, Search, Filter, Download, Edit, Trash2,
-  ArrowUp, ArrowDown, Activity, Target, Briefcase, FileIcon,
-  MicIcon, ImageIcon, RefreshCw, CheckCircle, XCircle, Clock
+  ArrowUp, ArrowDown, Activity, Target, Briefcase,
+  RefreshCw, CheckCircle, XCircle, Clock
 } from 'lucide-react';
 
-const AccountingSoftware = () => {
+export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -382,8 +383,8 @@ const AccountingSoftware = () => {
                 { label: 'AI asistent', icon: MessageSquare, color: 'purple' },
                 { label: 'Export reportu', icon: Download, color: 'orange' }
               ].map((action, index) => (
-                <button key={index} className={`w-full flex items-center p-3 rounded-lg border border-gray-200 hover:border-${action.color}-200 hover:bg-${action.color}-50 transition-all duration-200 group`}>
-                  <action.icon className={`w-5 h-5 mr-3 text-${action.color}-600`} />
+                <button key={index} className={`w-full flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-all duration-200 group`}>
+                  <action.icon className={`w-5 h-5 mr-3 text-blue-600`} />
                   <span className="font-medium text-gray-700 group-hover:text-gray-900">{action.label}</span>
                   <ChevronRight className="w-4 h-4 ml-auto text-gray-400 group-hover:text-gray-600" />
                 </button>
@@ -470,7 +471,7 @@ const AccountingSoftware = () => {
     </div>
   );
 
-  // Documents View
+  // Documents View - zkrácená verze
   const DocumentsView = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -494,106 +495,34 @@ const AccountingSoftware = () => {
             <Upload className="w-5 h-5" />
             <span>Nahrát soubory</span>
           </button>
-          <button className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition-colors shadow-sm">
-            <Camera className="w-5 h-5" />
-            <span>Vyfotit</span>
-          </button>
         </div>
       </div>
 
-      {/* AI Upload Zone */}
-      <div className="relative">
-        <div 
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-blue-300 rounded-2xl p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 cursor-pointer group"
-        >
-          <div className="space-y-6">
-            <div className="flex justify-center">
-              <div className="p-4 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
-                <Brain className="w-12 h-12 text-blue-600" />
-              </div>
+      {/* Upload Zone */}
+      <div 
+        onClick={() => fileInputRef.current?.click()}
+        className="border-2 border-dashed border-blue-300 rounded-2xl p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 cursor-pointer group"
+      >
+        <div className="space-y-6">
+          <div className="flex justify-center">
+            <div className="p-4 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
+              <Brain className="w-12 h-12 text-blue-600" />
             </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">AI Automatické zpracování</h3>
-              <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
-                Přetáhněte dokumenty nebo klikněte pro výběr. AI automaticky rozpozná text, 
-                extrahuje údaje a navrhne správné účtování podle českých standardů.
-              </p>
-            </div>
-            <div className="flex items-center justify-center space-x-8 text-sm text-gray-500">
-              <div className="flex items-center">
-                <FileIcon className="w-4 h-4 mr-2" />
-                <span>PDF, DOC, DOCX</span>
-              </div>
-              <div className="flex items-center">
-                <ImageIcon className="w-4 h-4 mr-2" />
-                <span>JPG, PNG, GIF</span>
-              </div>
-              <div className="flex items-center">
-                <MicIcon className="w-4 h-4 mr-2" />
-                <span>Hlasové zadání</span>
-              </div>
-            </div>
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">AI Automatické zpracování</h3>
+            <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
+              Přetáhněte dokumenty nebo klikněte pro výběr. AI automaticky rozpozná text, 
+              extrahuje údaje a navrhne správné účtování podle českých standardů.
+            </p>
           </div>
         </div>
-      </div>
-
-      {/* AI Features */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          {
-            title: 'OCR Rozpoznávání',
-            description: 'AI čte text z obrázků a PDF s 99% přesností',
-            icon: Eye,
-            color: 'blue'
-          },
-          {
-            title: 'Automatické účtování',
-            description: 'Navrhuje správné účetní zápisy podle ČR legislativy',
-            icon: Calculator,
-            color: 'green'
-          },
-          {
-            title: 'Kontrola shody',
-            description: 'Ověřuje DIČ, formáty a legislativní požadavky',
-            icon: Shield,
-            color: 'purple'
-          }
-        ].map((feature, index) => (
-          <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-            <div className={`p-3 rounded-lg w-fit mb-4 ${
-              feature.color === 'blue' ? 'bg-blue-100' :
-              feature.color === 'green' ? 'bg-green-100' :
-              'bg-purple-100'
-            }`}>
-              <feature.icon className={`w-6 h-6 ${
-                feature.color === 'blue' ? 'text-blue-600' :
-                feature.color === 'green' ? 'text-green-600' :
-                'text-purple-600'
-              }`} />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
-          </div>
-        ))}
       </div>
 
       {/* Documents List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Všechny doklady</h2>
-            <div className="flex items-center space-x-3">
-              <button className="flex items-center px-3 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                <Filter className="w-4 h-4 mr-2" />
-                Filtr
-              </button>
-              <button className="flex items-center px-3 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                <Search className="w-4 h-4 mr-2" />
-                Hledat
-              </button>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-gray-900">Všechny doklady</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -604,7 +533,6 @@ const AccountingSoftware = () => {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Částka</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Přesnost</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stav</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akce</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -651,20 +579,8 @@ const AccountingSoftware = () => {
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
                       {doc.status === 'processing' && <RefreshCw className="w-3 h-3 mr-1 animate-spin" />}
                       {doc.status === 'processed' && <CheckCircle className="w-3 h-3 mr-1" />}
-                      {doc.status === 'error' && <XCircle className="w-3 h-3 mr-1" />}
                       {getStatusText(doc.status)}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button className="text-blue-600 hover:text-blue-900 p-1 rounded">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 p-1 rounded">
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button className="text-gray-600 hover:text-gray-900 p-1 rounded">
-                      <Edit className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -672,34 +588,10 @@ const AccountingSoftware = () => {
           </table>
         </div>
       </div>
-
-      {/* Warning Messages */}
-      {documents.some(doc => doc.warnings.length > 0) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-          <div className="flex items-start">
-            <AlertTriangle className="w-6 h-6 text-amber-600 mt-1 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="font-medium text-amber-800 mb-2">AI detekovala možné problémy</h3>
-              <ul className="space-y-1">
-                {documents.filter(doc => doc.warnings.length > 0).map(doc => 
-                  doc.warnings.map((warning, index) => (
-                    <li key={`${doc.id}-${index}`} className="text-sm text-amber-700">
-                      <strong>{doc.name}:</strong> {warning}
-                    </li>
-                  ))
-                )}
-              </ul>
-              <button className="mt-3 text-amber-800 underline text-sm hover:text-amber-900">
-                Zobrazit doporučení AI
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 
-  // AI Chat View
+  // AI Chat View - zkrácená verze
   const AIChatView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -713,206 +605,108 @@ const AccountingSoftware = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Main Chat Interface */}
-        <div className="xl:col-span-3">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-[700px] flex flex-col">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                    <Brain className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">AI Účetní Expert</h3>
-                    <p className="text-sm text-gray-500">Specializace: České účetnictví & daně</p>
-                  </div>
-                </div>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <Settings className="w-5 h-5" />
-                </button>
-              </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-[700px] flex flex-col">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg mr-3">
+              <Brain className="w-6 h-6 text-purple-600" />
             </div>
-            
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
-                    {message.type === 'ai' && (
-                      <div className="flex items-center mb-2">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
-                          <Brain className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-700">AI Asistent</span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          {message.timestamp.toLocaleTimeString('cs-CZ', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className={`rounded-2xl px-6 py-4 ${
-                        message.type === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-900 border border-gray-200'
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    {message.type === 'user' && (
-                      <div className="flex items-center justify-end mt-1">
-                        <span className="text-xs text-gray-400 mr-2">
-                          {message.timestamp.toLocaleTimeString('cs-CZ', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                        <span className="text-xs text-gray-500">Vy</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {isProcessing && (
-                <div className="flex justify-start">
-                  <div className="flex items-center space-x-2 bg-gray-100 rounded-2xl px-6 py-4">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">AI přemýšlí...</span>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={chatEndRef} />
-            </div>
-            
-            {/* Input */}
-            <div className="border-t border-gray-100 p-6">
-              <div className="flex items-end space-x-3">
-                <div className="flex-1">
-                  <textarea
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder="Zeptejte se na účetnictví, daně, nebo požádejte o vygenerování dokladu..."
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
-                    rows="2"
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={toggleRecording}
-                    className={`p-3 rounded-xl transition-colors ${
-                      isRecording 
-                        ? 'bg-red-600 text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Mic className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!chatInput.trim() || isProcessing}
-                    className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              {isRecording && (
-                <div className="mt-3 flex items-center text-red-600">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                  <span className="text-sm">Nahrávám hlasové zadání...</span>
-                </div>
-              )}
+            <div>
+              <h3 className="font-semibold text-gray-900">AI Účetní Expert</h3>
+              <p className="text-sm text-gray-500">Specializace: České účetnictví & daně</p>
             </div>
           </div>
         </div>
         
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Prompts */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Rychlé dotazy</h3>
-            </div>
-            <div className="p-4 space-y-2">
-              {[
-                'Jak zaúčtovat nákup kancelářských potřeb?',
-                'Jaké jsou aktuální sazby DPH?',
-                'Vygeneruj fakturu za webové služby',
-                'Kontrola účetního období',
-                'Daňové optimalizace pro OSVČ'
-              ].map((prompt, index) => (
-                <button
-                  key={index}
-                  onClick={() => setChatInput(prompt)}
-                  className="w-full text-left p-3 text-sm bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {chatMessages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
+                {message.type === 'ai' && (
+                  <div className="flex items-center mb-2">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
+                      <Brain className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">AI Asistent</span>
+                  </div>
+                )}
+                <div
+                  className={`rounded-2xl px-6 py-4 ${
+                    message.type === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-900 border border-gray-200'
+                  }`}
                 >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* AI Capabilities */}
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
-            <h3 className="font-semibold mb-4 flex items-center">
-              <Sparkles className="w-5 h-5 mr-2" />
-              AI Schopnosti
-            </h3>
-            <div className="space-y-3 text-sm">
-              {[
-                'Účetní poradenství',
-                'Generování dokladů',
-                'Kontrola legislativy',
-                'Daňové optimalizace',
-                'Automatické účtování',
-                'Hlasové příkazy'
-              ].map((capability, index) => (
-                <div key={index} className="flex items-center">
-                  <CheckCircle className="w-4 h-4 mr-2 text-green-300" />
-                  <span>{capability}</span>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
-              ))}
+              </div>
+            </div>
+          ))}
+          
+          {isProcessing && (
+            <div className="flex justify-start">
+              <div className="flex items-center space-x-2 bg-gray-100 rounded-2xl px-6 py-4">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+                <span className="text-sm text-gray-600">AI přemýšlí...</span>
+              </div>
+            </div>
+          )}
+          
+          <div ref={chatEndRef} />
+        </div>
+        
+        {/* Input */}
+        <div className="border-t border-gray-100 p-6">
+          <div className="flex items-end space-x-3">
+            <div className="flex-1">
+              <textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Zeptejte se na účetnictví, daně, nebo požádejte o vygenerování dokladu..."
+                className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
+                rows="2"
+              />
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={toggleRecording}
+                className={`p-3 rounded-xl transition-colors ${
+                  isRecording 
+                    ? 'bg-red-600 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim() || isProcessing}
+                className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send className="w-5 h-5" />
+              </button>
             </div>
           </div>
-
-          {/* Usage Stats */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Statistiky použití</h3>
+          {isRecording && (
+            <div className="mt-3 flex items-center text-red-600">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
+              <span className="text-sm">Nahrávám hlasové zadání...</span>
             </div>
-            <div className="p-4 space-y-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Dotazy dnes</span>
-                <span className="font-semibold">23</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Přesnost odpovědí</span>
-                <span className="font-semibold text-green-600">98.5%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Ušetřený čas</span>
-                <span className="font-semibold text-blue-600">3.2h</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -1091,6 +885,4 @@ const AccountingSoftware = () => {
       )}
     </div>
   );
-};
-
-export default AccountingSoftware;
+}
