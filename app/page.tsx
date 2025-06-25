@@ -1,93 +1,315 @@
-'use client'
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Home, Brain, Menu, X, Bell, Search, 
-  TrendingUp, DollarSign, Target, Sparkles,
-  FileText, Calculator, BarChart3, Settings,
-  User, ArrowUp, Mic, Send
+  Calculator, 
+  Upload, 
+  Mic, 
+  Send, 
+  Bot, 
+  User, 
+  FileText, 
+  DollarSign, 
+  TrendingUp, 
+  Settings,
+  LogOut,
+  Plus,
+  Search,
+  Download,
+  Eye,
+  Menu,
+  X
 } from 'lucide-react';
 
-export default function HomePage() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+// Simulace Supabase
+const supabase = {
+  auth: {
+    signInWithPassword: async ({ email, password }: { email: string; password: string }) => ({ 
+      data: { user: { email } }, 
+      error: null 
+    }),
+    signUp: async ({ email, password }: { email: string; password: string }) => ({ 
+      data: { user: { email } }, 
+      error: null 
+    }),
+    signOut: async () => ({ error: null })
+  }
+};
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, description: 'Přehled účetnictví' },
-    { id: 'documents', label: 'Doklady', icon: FileText, description: 'AI zpracování dokumentů' },
-    { id: 'accounting', label: 'Účetnictví', icon: Calculator, description: 'Účetní operace' },
-    { id: 'ai-chat', label: 'AI Asistent', icon: Brain, description: 'Chat s AI poradcem' },
-    { id: 'reports', label: 'Reporty', icon: BarChart3, description: 'Analýzy a výkazy' },
-    { id: 'settings', label: 'Nastavení', icon: Settings, description: 'Konfigurace systému' },
-  ];
+// Typy
+interface User {
+  email: string;
+}
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('cs-CZ', {
-      style: 'currency',
-      currency: 'CZK',
-    }).format(amount);
+interface Message {
+  id: number;
+  type: 'user' | 'ai';
+  content: string;
+}
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  type: string;
+  status: 'processing' | 'completed';
+  extractedData?: {
+    dodavatel: string;
+    castka: string;
+    datum: string;
+    dph: string;
+  };
+}
+
+// Komponenta pro přihlášení
+function LoginForm({ onLogin }: { onLogin: (user: User) => void }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!email || !password) return;
+    
+    setLoading(true);
+    
+    try {
+      const { data, error } = isLogin 
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
+      
+      if (!error && data.user) {
+        onLogin(data.user);
+      }
+    } catch (error) {
+      console.error('Chyba při přihlašování:', error);
+    }
+    
+    setLoading(false);
   };
 
-  const DashboardView = () => (
-    <div className="space-y-8">
-      {/* Beautiful Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-white">
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Vítejte v A!Accountant</h1>
-              <p className="text-blue-100 text-lg">AI revolucionizuje vaše účetnictví</p>
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-800 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Calculator className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            A!Accountant
+          </h1>
+          <p className="text-gray-600 mt-2">AI účetní software</p>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="vas@email.cz"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Heslo
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !email || !password}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium disabled:opacity-50"
+          >
+            {loading ? 'Načítám...' : (isLogin ? 'Přihlásit se' : 'Registrovat se')}
+          </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-purple-600 hover:text-purple-700 text-sm"
+            >
+              {isLogin ? 'Nemáte účet? Registrujte se' : 'Už máte účet? Přihlaste se'}
+            </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-                <Brain className="w-8 h-8" />
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-blue-100">Dnes</p>
-                <p className="font-semibold">{new Date().toLocaleDateString('cs-CZ')}</p>
-              </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">nebo</span>
             </div>
           </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <button 
+              type="button" 
+              className="flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm font-medium">Google</span>
+            </button>
+            <button 
+              type="button" 
+              className="flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm font-medium">MS365</span>
+            </button>
+            <button 
+              type="button" 
+              className="flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm font-medium">Apple</span>
+            </button>
+          </div>
         </div>
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl"></div>
+      </div>
+    </div>
+  );
+}
+
+// Hlavní komponenta aplikace
+export default function AIAccountantApp() {
+  const [user, setUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      type: 'ai',
+      content: 'Dobrý den! Jsem váš AI účetní asistent. Mohu vám pomoci s účetnictvím, daňovými povinnostmi a legislativou. Co potřebujete vyřešit?'
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  if (!user) {
+    return <LoginForm onLogin={setUser} />;
+  }
+
+  const navigation = [
+    { id: 'dashboard', name: 'Dashboard', icon: Calculator },
+    { id: 'chat', name: 'AI Asistent', icon: Bot },
+    { id: 'documents', name: 'Dokumenty', icon: FileText },
+    { id: 'upload', name: 'Nahrát doklad', icon: Upload },
+    { id: 'voice', name: 'Hlasové zadání', icon: Mic },
+    { id: 'reports', name: 'Reporty', icon: TrendingUp },
+  ];
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      type: 'user',
+      content: inputMessage
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsTyping(true);
+
+    // Simulace AI odpovědi
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: generateAIResponse(inputMessage)
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  const generateAIResponse = (message: string): string => {
+    const responses = [
+      `Pro účtování této operace doporučuji použít účty MD 518 (Ostatní služby) a DAL 321 (Dodavatelé). Nezapomeňte na správné zaúčtování DPH podle aktuální sazby 21%.`,
+      `Podle aktuální legislativy je nutné tuto transakci zdokumentovat a archivovat po dobu 10 let. Upozorňuji, že u této operace může být riziko při daňové kontrole.`,
+      `Tato operace se účtuje na účet 501 (Spotřeba materiálu). DPH si můžete uplatnit v plné výši, pokud se jedná o majetek používaný pro podnikání.`,
+      `Doporučuji konzultovat tuto operaci s daňovým poradcem. Mohlo by se jednat o skrytý příjem, který by mohl být předmětem dodatečného zdanění.`
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const startVoiceRecording = () => {
+    setIsRecording(true);
+    setTimeout(() => {
+      setIsRecording(false);
+      setInputMessage('Nahrál jsem fakturu za kancelářské potřeby v hodnotě 2500 Kč včetně DPH');
+    }, 3000);
+  };
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+        <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nový doklad
+        </button>
       </div>
 
-      {/* Beautiful Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: 'Celkové příjmy', value: 2450000, change: '+12%', icon: TrendingUp, color: 'green' },
-          { title: 'Celkové výdaje', value: 1850000, change: '+5%', icon: DollarSign, color: 'red' },
-          { title: 'Čistý zisk', value: 600000, change: '+18%', icon: Target, color: 'blue' },
-          { title: 'AI zpracování', value: 156, change: '+23', icon: Sparkles, color: 'purple' }
+          { title: 'Celkové příjmy', value: '2 450 000 Kč', change: '+12%', color: 'green' },
+          { title: 'Celkové výdaje', value: '1 850 000 Kč', change: '+5%', color: 'red' },
+          { title: 'Čistý zisk', value: '600 000 Kč', change: '+18%', color: 'blue' },
+          { title: 'AI zpracování', value: '156 dokladů', change: '+23%', color: 'purple' },
         ].map((stat, index) => (
-          <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+          <div key={index} className="bg-white rounded-xl p-6 shadow-sm border">
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stat.title.includes('zpracování') ? 
-                    stat.value.toLocaleString() : 
-                    formatCurrency(stat.value)
-                  }
+              <div>
+                <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                <p className={`text-sm mt-2 ${
+                  stat.color === 'green' ? 'text-green-600' : 
+                  stat.color === 'red' ? 'text-red-600' : 
+                  stat.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
+                }`}>
+                  {stat.change} vs minulý měsíc
                 </p>
-                <div className="flex items-center mt-2">
-                  <ArrowUp className="w-4 h-4 mr-1 text-green-600" />
-                  <span className="text-sm font-medium text-green-600">{stat.change}</span>
-                  <span className="text-sm text-gray-500 ml-1">vs minulý měsíc</span>
-                </div>
               </div>
-              <div className={`p-3 rounded-xl ${
-                stat.color === 'green' ? 'bg-green-100' :
-                stat.color === 'red' ? 'bg-red-100' :
-                stat.color === 'blue' ? 'bg-blue-100' :
-                'bg-purple-100'
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                stat.color === 'green' ? 'bg-green-100' : 
+                stat.color === 'red' ? 'bg-red-100' : 
+                stat.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
               }`}>
-                <stat.icon className={`w-6 h-6 ${
-                  stat.color === 'green' ? 'text-green-600' :
-                  stat.color === 'red' ? 'text-red-600' :
-                  stat.color === 'blue' ? 'text-blue-600' :
-                  'text-purple-600'
+                <DollarSign className={`w-6 h-6 ${
+                  stat.color === 'green' ? 'text-green-600' : 
+                  stat.color === 'red' ? 'text-red-600' : 
+                  stat.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
                 }`} />
               </div>
             </div>
@@ -95,242 +317,157 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Success Message */}
-      <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-        <div className="flex items-center justify-center">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-          <p className="text-lg font-semibold text-green-800">✅ AI Chat + Upload připraven!</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl p-6 shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Poslední transakce</h3>
+          <div className="space-y-4">
+            {[
+              { date: '25.6.2025', description: 'Faktura #2025-001', amount: '-12 500 Kč', status: 'Zaúčtováno' },
+              { date: '24.6.2025', description: 'Přijatá platba', amount: '+35 000 Kč', status: 'Schváleno' },
+              { date: '23.6.2025', description: 'Kancelářské potřeby', amount: '-2 340 Kč', status: 'Zpracovává AI' },
+            ].map((transaction, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{transaction.description}</p>
+                  <p className="text-sm text-gray-600">{transaction.date}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`font-semibold ${transaction.amount.includes('+') ? 'text-green-600' : 'text-red-600'}`}>
+                    {transaction.amount}
+                  </p>
+                  <p className="text-sm text-gray-500">{transaction.status}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-green-600 mt-2 text-center">Můžete chatovat s AI expertem a nahrávat dokumenty pro analýzu.</p>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">AI doporučení</h3>
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm font-medium text-yellow-800">⚠️ Upozornění na DPH</p>
+              <p className="text-sm text-yellow-700 mt-1">
+                U faktury #2025-003 zkontrolujte správnost DPH sazby. Mohlo by se jednat o chybu.
+              </p>
+            </div>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-medium text-blue-800">💡 Tip pro optimalizaci</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Můžete uplatnit odpočet DPH za pohonné hmoty z minulého měsíce.
+              </p>
+            </div>
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm font-medium text-green-800">✅ Vše v pořádku</p>
+              <p className="text-sm text-green-700 mt-1">
+                Účetní období je uzavřeno bez chyb.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 
-  const AIChatView = () => {
-    const [messages, setMessages] = useState([
-      {
-        id: 1,
-        type: 'ai',
-        content: 'Dobrý den! Jsem váš AI účetní expert. Specializuji se na české účetnictví, DPH a daňovou legislativu. Na čem vám mohu pomoci?',
-        timestamp: new Date()
-      }
-    ]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
+  const renderChat = () => (
+    <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border" style={{ height: 'calc(100vh - 200px)' }}>
+      <div className="p-6 border-b border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <Bot className="w-6 h-6 text-purple-600" />
+          AI Účetní Asistent
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">Specializace: České účetnictví, DPH, daňové poradenství</p>
+      </div>
 
-    const sendMessage = async () => {
-      if (!input.trim() || isLoading) return;
-
-      const userMessage = {
-        id: messages.length + 1,
-        type: 'user',
-        content: input,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, userMessage]);
-      setInput('');
-      setIsLoading(true);
-
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ message: input }),
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        const aiMessage = {
-          id: messages.length + 2,
-          type: 'ai',
-          content: data.message,
-          timestamp: new Date()
-        };
-
-        setMessages(prev => [...prev, aiMessage]);
-      } catch (error) {
-        const errorMessage = {
-          id: messages.length + 2,
-          type: 'ai',
-          content: 'Omlouvám se, nastala chyba. Zkuste to prosím znovu nebo zkontrolujte připojení.',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const toggleRecording = () => {
-      if (!isRecording) {
-        setIsRecording(true);
-        setTimeout(() => {
-          setIsRecording(false);
-          setInput('Jak zaúčtovat nákup kancelářských potřeb za 5000 Kč?');
-        }, 3000);
-      } else {
-        setIsRecording(false);
-      }
-    };
-
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">AI Účetní Expert</h1>
-            <p className="text-gray-600 mt-2">Váš osobní AI poradce pro české účetnictví a daně</p>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex gap-3 max-w-3xl ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'user' ? 'bg-purple-600' : 'bg-blue-600'}`}>
+                {message.type === 'user' ? (
+                  <User className="w-4 h-4 text-white" />
+                ) : (
+                  <Bot className="w-4 h-4 text-white" />
+                )}
+              </div>
+              <div className={`px-4 py-3 rounded-2xl ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                <p className="text-sm">{message.content}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">AI Online</span>
+        ))}
+        
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="flex gap-3 max-w-3xl">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="px-4 py-3 rounded-2xl bg-gray-100">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
           </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-6 border-t border-gray-200">
+        <div className="flex gap-2 mb-3">
+          {[
+            'Jak zaúčtovat fakturu?',
+            'DPH sazby 2025',
+            'Odpočet DPH za PHM',
+            'Účetní uzávěrka'
+          ].map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setInputMessage(suggestion)}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-[600px] flex flex-col">
-          {/* Chat Header */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                <Brain className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">AI Účetní Expert</h3>
-                <p className="text-sm text-gray-500">České účetnictví • DPH • Daně • Legislativa</p>
-              </div>
-            </div>
+        
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Zeptejte se na účetnictví, daně, legislativu..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+            />
+            <button
+              onClick={startVoiceRecording}
+              className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full ${isRecording ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <Mic className={`w-4 h-4 ${isRecording ? 'animate-pulse' : ''}`} />
+            </button>
           </div>
-          
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {messages.map((message: any) => (
-              <div
-                key={message.id}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
-                  {message.type === 'ai' && (
-                    <div className="flex items-center mb-2">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
-                        <Brain className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">AI Expert</span>
-                    </div>
-                  )}
-                  <div
-                    className={`rounded-2xl px-6 py-4 ${
-                      message.type === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900 border border-gray-200'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 text-center">
-                    {message.timestamp.toLocaleTimeString('cs-CZ')}
-                  </p>
-                </div>
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="flex items-center space-x-2 bg-gray-100 rounded-2xl px-6 py-4">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  </div>
-                  <span className="text-sm text-gray-600">AI zpracovává vaši otázku...</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Input */}
-          <div className="border-t border-gray-100 p-6">
-            <div className="flex items-end space-x-3">
-              <div className="flex-1">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  placeholder="Zeptejte se na účetnictví, DPH, daně nebo legislativu..."
-                  className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
-                  rows={2}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={toggleRecording}
-                  className={`p-3 rounded-xl transition-colors ${
-                    isRecording 
-                      ? 'bg-red-600 text-white' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  disabled={isLoading}
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || isLoading}
-                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            
-            {isRecording && (
-              <div className="mt-3 flex items-center text-red-600">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                <span className="text-sm">Nahrávám hlasové zadání...</span>
-              </div>
-            )}
-            
-            <div className="mt-4 flex flex-wrap gap-2">
-              {[
-                "Jak zaúčtovat nákup zboží?",
-                "Sazby DPH v České republice",
-                "Co je to účet 311?",
-                "Jak na odpočet DPH?"
-              ].map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => setInput(suggestion)}
-                  disabled={isLoading}
-                  className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors disabled:opacity-50"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
+          <button
+            onClick={handleSendMessage}
+            disabled={!inputMessage.trim()}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send className="w-4 h-4" />
+          </button>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  const DocumentsView = () => {
-    const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const renderUpload = () => {
     const [dragActive, setDragActive] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
-    const handleDrag = (e: any) => {
+    const handleDrag = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (e.type === "dragenter" || e.type === "dragover") {
@@ -340,232 +477,167 @@ export default function HomePage() {
       }
     };
 
-    const handleDrop = (e: any) => {
+    const handleDrop = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
       
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleFiles(e.dataTransfer.files);
-      }
-    };
-
-    const handleChange = (e: any) => {
-      e.preventDefault();
-      if (e.target.files && e.target.files[0]) {
-        handleFiles(e.target.files);
-      }
-    };
-
-    const handleFiles = async (files: FileList) => {
-      setIsAnalyzing(true);
-      
-      for (let file of files) {
-        // Přidej soubor do seznamu
-        const newFile = {
-          id: Date.now() + Math.random(),
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const files = Array.from(e.dataTransfer.files);
+        setUploadedFiles(prev => [...prev, ...files.map(file => ({
           name: file.name,
           size: file.size,
-          status: 'analyzing',
-          data: null
-        };
+          type: file.type,
+          status: 'processing' as const
+        }))]);
         
-        setUploadedFiles(prev => [...prev, newFile]);
-
-        // Analyzuj soubor pomocí AI
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          const response = await fetch('/api/analyze-document', {
-            method: 'POST',
-            body: formData
-          });
-
-          const result = await response.json();
-          
-          // Aktualizuj soubor s výsledky
-          setUploadedFiles(prev => 
-            prev.map(f => 
-              f.id === newFile.id 
-                ? { 
-                    ...f, 
-                    status: 'completed', 
-                    data: result.data,
-                    confidence: result.data.kvalita_rozpoznani 
-                  }
-                : f
-            )
-          );
-        } catch (error) {
-          setUploadedFiles(prev => 
-            prev.map(f => 
-              f.id === newFile.id 
-                ? { ...f, status: 'error' }
-                : f
-            )
-          );
-        }
+        setTimeout(() => {
+          setUploadedFiles(prev => prev.map(file => ({
+            ...file,
+            status: 'completed' as const,
+            extractedData: {
+              dodavatel: 'ACME s.r.o.',
+              castka: '12 500 Kč',
+              datum: '25.6.2025',
+              dph: '2 625 Kč'
+            }
+          })));
+        }, 3000);
       }
-      
-      setIsAnalyzing(false);
+    };
+
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const files = Array.from(e.target.files);
+        setUploadedFiles(prev => [...prev, ...files.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          status: 'processing' as const
+        }))]);
+        
+        setTimeout(() => {
+          setUploadedFiles(prev => prev.map(file => ({
+            ...file,
+            status: 'completed' as const,
+            extractedData: {
+              dodavatel: 'ACME s.r.o.',
+              castka: '12 500 Kč',
+              datum: '25.6.2025',
+              dph: '2 625 Kč'
+            }
+          })));
+        }, 3000);
+      }
     };
 
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">AI Zpracování dokumentů</h1>
-            <p className="text-gray-600 mt-2">Nahrajte faktury, účtenky nebo jiné doklady pro automatickou analýzu</p>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Nahrát dokumenty</h2>
+          <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Hromadné zpracování
+          </button>
         </div>
 
-        {/* Beautiful Drag & Drop Zone */}
-        <div
-          className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer ${
-            dragActive 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
-          }`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => {
-            const input = document.getElementById('fileInput') as HTMLInputElement;
-            input?.click();
-          }}
-        >
-          <input
-            id="fileInput"
-            type="file"
-            multiple
-            accept="image/*,.pdf"
-            onChange={handleChange}
-            className="hidden"
-          />
-          
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
-            <div className="flex justify-center">
-              <div className={`p-6 rounded-full transition-colors ${
-                dragActive ? 'bg-blue-200' : 'bg-blue-100'
-              }`}>
-                <Brain className="w-16 h-16 text-blue-600" />
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                {dragActive ? 'Pusťte soubory zde!' : 'AI Automatická analýza'}
+            <div
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                dragActive ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Přetáhněte soubory sem
               </h3>
-              <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                Přetáhněte faktury, účtenky nebo doklady nebo klikněte pro výběr. 
-                AI automaticky rozpozná text, extrahuje všechny údaje a navrhne správné účtování.
+              <p className="text-gray-600 mb-4">
+                nebo klikněte pro výběr souborů
               </p>
-              <div className="mt-4 text-sm text-gray-500">
-                Podporované formáty: JPG, PNG, PDF • Max velikost: 10MB
-              </div>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                id="file-upload"
+                onChange={handleFileInput}
+              />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <span className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors inline-block">
+                  Vybrat soubory
+                </span>
+              </label>
+              <p className="text-sm text-gray-500 mt-2">
+                PDF, JPG, PNG do 10MB
+              </p>
             </div>
-            
-            <div className="flex justify-center">
-              <button className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium">
-                Vybrat soubory
-              </button>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">🤖 AI zpracování</h4>
+              <p className="text-sm text-blue-800">
+                AI automaticky rozpozná text z dokumentů, extrahuje klíčové údaje 
+                (dodavatel, částka, datum, DPH) a navrhne správné zaúčtování podle 
+                české legislativy.
+              </p>
             </div>
           </div>
 
-          {isAnalyzing && (
-            <div className="absolute inset-0 bg-white/90 rounded-2xl flex items-center justify-center">
-              <div className="text-center">
-                <div className="flex space-x-1 justify-center mb-4">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
-                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">AI analyzuje dokumenty...</p>
-                <p className="text-gray-600">Rozpoznávám text a extrahuji údaje</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Uploaded Files List */}
-        {uploadedFiles.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Analyzované dokumenty</h2>
-            </div>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Zpracované soubory</h3>
             
-            <div className="p-6 space-y-4">
-              {uploadedFiles.map((file: any) => (
-                <div key={file.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-8 h-8 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">{file.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
+            {uploadedFiles.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Zatím žádné soubory nenahrány
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900 truncate">{file.name}</span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        file.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {file.status === 'processing' ? 'Zpracovává...' : 'Hotovo'}
+                      </span>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
-                      {file.status === 'analyzing' && (
-                        <span className="text-blue-600 text-sm">Analyzuji...</span>
-                      )}
-                      {file.status === 'completed' && file.confidence && (
-                        <span className="text-green-600 text-sm font-medium">
-                          AI: {(file.confidence * 100).toFixed(0)}%
-                        </span>
-                      )}
-                      {file.status === 'error' && (
-                        <span className="text-red-600 text-sm">Chyba</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {file.data && file.status === 'completed' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 rounded-lg p-4">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Dodavatel</p>
-                        <p className="font-medium">{file.data.dodavatel || 'Nerozpoznáno'}</p>
+                    {file.status === 'processing' && (
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-purple-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Částka</p>
-                        <p className="font-medium">{file.data.castka ? `${file.data.castka} Kč` : 'Nerozpoznáno'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Datum</p>
-                        <p className="font-medium">{file.data.datum || 'Nerozpoznáno'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Navrhované účtování</p>
-                        <p className="font-medium text-blue-600">
-                          {file.data.ucet_md && file.data.ucet_dal 
-                            ? `${file.data.ucet_md} / ${file.data.ucet_dal}`
-                            : 'Ruční kontrola'
-                          }
-                        </p>
-                      </div>
-                      
-                      {file.data.upozorneni && file.data.upozorneni.length > 0 && (
-                        <div className="col-span-full">
-                          <p className="text-xs text-amber-600 mb-1">Upozornění</p>
-                          <ul className="text-sm text-amber-700">
-                            {file.data.upozorneni.map((warning: string, idx: number) => (
-                              <li key={idx}>• {warning}</li>
-                            ))}
-                          </ul>
+                    )}
+                    
+                    {file.extractedData && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <h5 className="font-medium text-gray-900 mb-2">Extrahovaná data:</h5>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><strong>Dodavatel:</strong> {file.extractedData.dodavatel}</div>
+                          <div><strong>Částka:</strong> {file.extractedData.castka}</div>
+                          <div><strong>Datum:</strong> {file.extractedData.datum}</div>
+                          <div><strong>DPH:</strong> {file.extractedData.dph}</div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                        <div className="mt-3 flex gap-2">
+                          <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
+                            Schválit
+                          </button>
+                          <button className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors">
+                            Upravit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -573,136 +645,173 @@ export default function HomePage() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView />;
+        return renderDashboard();
+      case 'chat':
+        return renderChat();
+      case 'upload':
+        return renderUpload();
+      case 'voice':
+        return (
+          <div className="bg-white rounded-xl p-8 text-center shadow-sm border">
+            <Mic className="w-16 h-16 text-purple-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Hlasové zadávání</h2>
+            <p className="text-gray-600 mb-6">
+              Řekněte, co chcete zaúčtovat, a AI automaticky vytvoří účetní zápis
+            </p>
+            <button 
+              onClick={startVoiceRecording}
+              className={`px-8 py-4 rounded-xl text-white font-medium text-lg transition-all ${
+                isRecording 
+                  ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
+            >
+              {isRecording ? 'Nahrávám... (klikněte pro ukončení)' : 'Začít nahrávání'}
+            </button>
+          </div>
+        );
       case 'documents':
-        return <DocumentsView />;
-      case 'ai-chat':
-        return <AIChatView />;
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">Dokumenty</h2>
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <p className="text-gray-600">Seznam všech dokumentů bude zde...</p>
+            </div>
+          </div>
+        );
+      case 'reports':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">Reporty a analýzy</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                'Výkaz zisku a ztráty',
+                'Rozvaha',
+                'DPH přehled',
+                'Cashflow analýza',
+                'Daňový přehled',
+                'Vlastní report'
+              ].map((report) => (
+                <div key={report} className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow cursor-pointer">
+                  <TrendingUp className="w-8 h-8 text-purple-600 mb-3" />
+                  <h3 className="font-semibold text-gray-900 mb-2">{report}</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Automaticky generovaný report s AI analýzou
+                  </p>
+                  <button className="text-purple-600 text-sm font-medium hover:text-purple-700">
+                    Generovat →
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
       default:
-        return <DashboardView />;
+        return renderDashboard();
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Beautiful Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col`}>
-        {/* Logo */}
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl mr-3">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
+            {sidebarOpen && (
               <div>
-                <h2 className="text-xl font-bold text-gray-900">A!Accountant</h2>
-                <p className="text-sm text-gray-500">AI Účetní Software</p>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  A!Accountant
+                </h1>
+                <p className="text-sm text-gray-600">AI účetní software</p>
               </div>
-            </div>
-            <button 
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            )}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <X className="w-5 h-5" />
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          {menuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                activeTab === item.id
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <div className="flex-1 text-left">
-                <div className="font-medium">{item.label}</div>
-                <div className={`text-xs ${activeTab === item.id ? 'text-blue-100' : 'text-gray-400'}`}>
-                  {item.description}
-                </div>
-              </div>
-              {activeTab === item.id && (
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              )}
-            </button>
-          ))}
-        </nav>
-        
-        {/* User Profile */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-3 p-4 rounded-xl bg-gray-50">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">Milan Vlasák</p>
-              <p className="text-sm text-gray-500 truncate">milan@vlasak.cloud</p>
-            </div>
+
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${
+                    activeTab === item.id
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {sidebarOpen && <span className="font-medium">{item.name}</span>}
+                </button>
+              );
+            })}
           </div>
+        </nav>
+
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            {sidebarOpen && (
+              <div>
+                <p className="font-medium text-gray-900 text-sm">{user.email}</p>
+                <p className="text-xs text-gray-600">Účetní expert</p>
+              </div>
+            )}
+          </div>
+          
+          {sidebarOpen && (
+            <div className="space-y-2">
+              <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">
+                <Settings className="w-4 h-4" />
+                Nastavení
+              </button>
+              <button 
+                onClick={() => setUser(null)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                Odhlásit se
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 lg:ml-0 flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button 
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                
-                <div className="relative">
-                  <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Vyhledat v účetnictví..."
-                    className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-                  <Bell className="w-6 h-6 text-gray-600" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                </button>
-                
-                <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium">AI Active</span>
-                </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {navigation.find(item => item.id === activeTab)?.name || 'Dashboard'}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Vítejte v AI účetním systému
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                AI aktivní
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-6 bg-gray-50">
+        <main className="flex-1 p-6 overflow-y-auto">
           {renderContent()}
         </main>
       </div>
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }
