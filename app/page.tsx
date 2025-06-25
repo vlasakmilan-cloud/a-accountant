@@ -6,6 +6,7 @@ import {
   FileText, Calculator, BarChart3, Settings,
   User, ArrowUp
 } from 'lucide-react';
+import { Mic, Send } from 'lucide-react';
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
