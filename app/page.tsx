@@ -236,7 +236,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-72">
+      <div className="flex-1 lg:ml-72 min-h-screen flex flex-col">
         {/* Beautiful Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-6 py-4">
@@ -275,7 +275,7 @@ export default function HomePage() {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="flex-1 p-6">
           {renderContent()}
         </main>
       </div>
@@ -288,5 +288,7 @@ export default function HomePage() {
         />
       )}
     </div>
+  );
+}
   );
 }
