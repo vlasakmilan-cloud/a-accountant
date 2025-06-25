@@ -99,9 +99,9 @@ export default function HomePage() {
       <div className="bg-green-50 border border-green-200 rounded-xl p-6">
         <div className="flex items-center justify-center">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-          <p className="text-lg font-semibold text-green-800">✅ AI Chat připraven!</p>
+          <p className="text-lg font-semibold text-green-800">✅ AI Chat + Upload připraven!</p>
         </div>
-        <p className="text-green-600 mt-2 text-center">Klikněte na "AI Asistent" a vyzkoušejte skutečný rozhovor s OpenAI.</p>
+        <p className="text-green-600 mt-2 text-center">Můžete chatovat s AI expertem a nahrávat dokumenty pro analýzu.</p>
       </div>
     </div>
   );
@@ -245,8 +245,8 @@ export default function HomePage() {
                 <div className="flex items-center space-x-2 bg-gray-100 rounded-2xl px-6 py-4">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                   </div>
                   <span className="text-sm text-gray-600">AI zpracovává vaši otázku...</span>
                 </div>
@@ -325,18 +325,257 @@ export default function HomePage() {
     );
   };
 
+  const DocumentsView = () => {
+    const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+
+    const handleDrag = (e: any) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.type === "dragenter" || e.type === "dragover") {
+        setDragActive(true);
+      } else if (e.type === "dragleave") {
+        setDragActive(false);
+      }
+    };
+
+    const handleDrop = (e: any) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFiles(e.dataTransfer.files);
+      }
+    };
+
+    const handleChange = (e: any) => {
+      e.preventDefault();
+      if (e.target.files && e.target.files[0]) {
+        handleFiles(e.target.files);
+      }
+    };
+
+    const handleFiles = async (files: FileList) => {
+      setIsAnalyzing(true);
+      
+      for (let file of files) {
+        // Přidej soubor do seznamu
+        const newFile = {
+          id: Date.now() + Math.random(),
+          name: file.name,
+          size: file.size,
+          status: 'analyzing',
+          data: null
+        };
+        
+        setUploadedFiles(prev => [...prev, newFile]);
+
+        // Analyzuj soubor pomocí AI
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const response = await fetch('/api/analyze-document', {
+            method: 'POST',
+            body: formData
+          });
+
+          const result = await response.json();
+          
+          // Aktualizuj soubor s výsledky
+          setUploadedFiles(prev => 
+            prev.map(f => 
+              f.id === newFile.id 
+                ? { 
+                    ...f, 
+                    status: 'completed', 
+                    data: result.data,
+                    confidence: result.data.kvalita_rozpoznani 
+                  }
+                : f
+            )
+          );
+        } catch (error) {
+          setUploadedFiles(prev => 
+            prev.map(f => 
+              f.id === newFile.id 
+                ? { ...f, status: 'error' }
+                : f
+            )
+          );
+        }
+      }
+      
+      setIsAnalyzing(false);
+    };
+
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">AI Zpracování dokumentů</h1>
+            <p className="text-gray-600 mt-2">Nahrajte faktury, účtenky nebo jiné doklady pro automatickou analýzu</p>
+          </div>
+        </div>
+
+        {/* Beautiful Drag & Drop Zone */}
+        <div
+          className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer ${
+            dragActive 
+              ? 'border-blue-500 bg-blue-50' 
+              : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={() => {
+            const input = document.getElementById('fileInput') as HTMLInputElement;
+            input?.click();
+          }}
+        >
+          <input
+            id="fileInput"
+            type="file"
+            multiple
+            accept="image/*,.pdf"
+            onChange={handleChange}
+            className="hidden"
+          />
+          
+          <div className="space-y-6">
+            <div className="flex justify-center">
+              <div className={`p-6 rounded-full transition-colors ${
+                dragActive ? 'bg-blue-200' : 'bg-blue-100'
+              }`}>
+                <Brain className="w-16 h-16 text-blue-600" />
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {dragActive ? 'Pusťte soubory zde!' : 'AI Automatická analýza'}
+              </h3>
+              <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                Přetáhněte faktury, účtenky nebo doklady nebo klikněte pro výběr. 
+                AI automaticky rozpozná text, extrahuje všechny údaje a navrhne správné účtování.
+              </p>
+              <div className="mt-4 text-sm text-gray-500">
+                Podporované formáty: JPG, PNG, PDF • Max velikost: 10MB
+              </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <button className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                Vybrat soubory
+              </button>
+            </div>
+          </div>
+
+          {isAnalyzing && (
+            <div className="absolute inset-0 bg-white/90 rounded-2xl flex items-center justify-center">
+              <div className="text-center">
+                <div className="flex space-x-1 justify-center mb-4">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
+                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">AI analyzuje dokumenty...</p>
+                <p className="text-gray-600">Rozpoznávám text a extrahuji údaje</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Uploaded Files List */}
+        {uploadedFiles.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">Analyzované dokumenty</h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {uploadedFiles.map((file: any) => (
+                <div key={file.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="w-8 h-8 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">{file.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {file.status === 'analyzing' && (
+                        <span className="text-blue-600 text-sm">Analyzuji...</span>
+                      )}
+                      {file.status === 'completed' && file.confidence && (
+                        <span className="text-green-600 text-sm font-medium">
+                          AI: {(file.confidence * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      {file.status === 'error' && (
+                        <span className="text-red-600 text-sm">Chyba</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {file.data && file.status === 'completed' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 rounded-lg p-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Dodavatel</p>
+                        <p className="font-medium">{file.data.dodavatel || 'Nerozpoznáno'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Částka</p>
+                        <p className="font-medium">{file.data.castka ? `${file.data.castka} Kč` : 'Nerozpoznáno'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Datum</p>
+                        <p className="font-medium">{file.data.datum || 'Nerozpoznáno'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Navrhované účtování</p>
+                        <p className="font-medium text-blue-600">
+                          {file.data.ucet_md && file.data.ucet_dal 
+                            ? `${file.data.ucet_md} / ${file.data.ucet_dal}`
+                            : 'Ruční kontrola'
+                          }
+                        </p>
+                      </div>
+                      
+                      {file.data.upozorneni && file.data.upozorneni.length > 0 && (
+                        <div className="col-span-full">
+                          <p className="text-xs text-amber-600 mb-1">Upozornění</p>
+                          <ul className="text-sm text-amber-700">
+                            {file.data.upozorneni.map((warning: string, idx: number) => (
+                              <li key={idx}>• {warning}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView />;
       case 'documents':
-        return (
-          <div className="text-center p-8 bg-white rounded-xl">
-            <FileText className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Zpracování dokumentů</h2>
-            <p className="text-gray-600">Přidáme v dalším kroku - drag & drop upload s AI analýzou</p>
-          </div>
-        );
+        return <DocumentsView />;
       case 'ai-chat':
         return <AIChatView />;
       default:
