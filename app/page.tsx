@@ -60,7 +60,7 @@ export default function HomePage() {
     },
   ]);
   
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when new messages arrive
@@ -104,8 +104,8 @@ export default function HomePage() {
     }, 1500);
   };
 
-  const getAIResponse = (input) => {
-    const responses = {
+  const getAIResponse = (input: string) => {
+    const responses: Record<string, string> = {
       'účtování': 'Pro správné zaúčtování potřebuji znát typ transakce. Můžete mi říct, zda se jedná o nákup, prodej, mzdy, nebo jiný typ operace? Také mi pomozte s částkou a dodavatelem.',
       'faktura': 'Pokud máte fakturu, můžete ji nahrát do sekce Doklady. AI automaticky rozpozná všechny údaje a navrhne správné zaúčtování podle českých účetních standardů.',
       'dph': 'Aktuální sazby DPH v ČR jsou: 21% základní sazba, 12% první snížená sazba, 5% druhá snížená sazba. Podle typu zboží/služeb navrhnu správnou sazbu.',
@@ -116,8 +116,8 @@ export default function HomePage() {
     return key ? responses[key] : 'Rozumím vašemu dotazu. Jako AI účetní mohu pomoci s účtováním, daňovými otázkami a generováním dokladů. Můžete být konkrétnější ohledně toho, s čím potřebujete pomoc?';
   };
 
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
     
     for (const file of files) {
       const newDoc = {
@@ -163,14 +163,14 @@ export default function HomePage() {
     }
   };
 
-  const formatCurrency = (amount, currency = 'CZK') => {
+  const formatCurrency = (amount: number, currency = 'CZK') => {
     return new Intl.NumberFormat('cs-CZ', {
       style: 'currency',
       currency: currency,
     }).format(amount);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'processed': return 'bg-green-100 text-green-800 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -181,7 +181,7 @@ export default function HomePage() {
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'processed': return 'Zpracováno';
       case 'pending': return 'Čeká na schválení';
@@ -678,7 +678,7 @@ export default function HomePage() {
                 }}
                 placeholder="Zeptejte se na účetnictví, daně, nebo požádejte o vygenerování dokladu..."
                 className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none"
-                rows="2"
+                rows={2}
               />
             </div>
             <div className="flex space-x-2">
