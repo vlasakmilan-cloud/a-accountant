@@ -14,13 +14,8 @@ import {
   Settings,
   LogOut,
   Plus,
-  Search,
-  Download,
-  Eye,
   Menu,
-  X,
-  CheckCircle,
-  AlertCircle
+  X
 } from 'lucide-react';
 
 // Simulace Supabase
@@ -54,7 +49,6 @@ interface UploadedFile {
   size: number;
   type: string;
   status: 'uploading' | 'processing' | 'completed' | 'error';
-  progress?: number;
   extractedData?: any;
   error?: string;
 }
@@ -227,7 +221,7 @@ export default function AIAccountantApp() {
     { id: 'reports', name: 'Reporty', icon: TrendingUp },
   ];
 
-  // SKUTEČNÉ AI VOLÁNÍ - NAHRADILO SIMULACI
+  // SKUTEČNÉ AI VOLÁNÍ
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
@@ -243,7 +237,6 @@ export default function AIAccountantApp() {
     setIsTyping(true);
 
     try {
-      // Skutečné volání AI API s vaším promptem
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -272,7 +265,7 @@ export default function AIAccountantApp() {
       const errorResponse: Message = {
         id: Date.now() + 1,
         type: 'ai',
-        content: 'Omlouvám se, momentálně nemohu odpovědět. Zkuste to prosím později. Možná není nastaven OpenAI API klíč.'
+        content: 'Omlouvám se, momentálně nemohu odpovědět. Zkuste to prosím později.'
       };
       setMessages(prev => [...prev, errorResponse]);
     } finally {
@@ -480,7 +473,7 @@ export default function AIAccountantApp() {
     </div>
   );
 
-  // SKUTEČNÉ ZPRACOVÁNÍ DOKUMENTŮ - NAHRADILO SIMULACI
+  // ZATÍM JEDNODUCHÁ VERZE UPLOADU (BEZ CHYB)
   const renderUpload = () => {
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -495,65 +488,6 @@ export default function AIAccountantApp() {
       }
     };
 
-    const processFile = async (file: File) => {
-      const fileEntry: UploadedFile = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        status: 'uploading',
-        progress: 0
-      };
-
-      setUploadedFiles(prev => [...prev, fileEntry]);
-
-      try {
-        // Aktualizace progressu
-        setUploadedFiles(prev => prev.map(f => 
-          f.name === file.name ? { ...f, status: 'processing', progress: 50 } : f
-        ));
-
-        // Skutečné volání API pro analýzu dokumentu
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/analyze-document', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          setUploadedFiles(prev => prev.map(f => 
-            f.name === file.name ? { 
-              ...f, 
-              status: 'completed', 
-              progress: 100,
-              extractedData: result.data
-            } : f
-          ));
-        } else {
-          setUploadedFiles(prev => prev.map(f => 
-            f.name === file.name ? { 
-              ...f, 
-              status: 'error',
-              error: result.error || 'Chyba při zpracování'
-            } : f
-          ));
-        }
-
-      } catch (error) {
-        console.error('Chyba při zpracování souboru:', error);
-        setUploadedFiles(prev => prev.map(f => 
-          f.name === file.name ? { 
-            ...f, 
-            status: 'error',
-            error: 'Chyba při komunikaci se serverem'
-          } : f
-        ));
-      }
-    };
-
     const handleDrop = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -561,14 +495,51 @@ export default function AIAccountantApp() {
       
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
         const files = Array.from(e.dataTransfer.files);
-        files.forEach(file => processFile(file));
+        setUploadedFiles(prev => [...prev, ...files.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          status: 'processing' as const
+        }))]);
+        
+        // Simulace zpracování - později nahradíme skutečným API
+        setTimeout(() => {
+          setUploadedFiles(prev => prev.map(file => ({
+            ...file,
+            status: 'completed' as const,
+            extractedData: {
+              dodavatel: 'ACME s.r.o.',
+              castka: '12 500 Kč',
+              datum: '25.6.2025',
+              dph: '2 625 Kč'
+            }
+          })));
+        }, 3000);
       }
     };
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files) {
         const files = Array.from(e.target.files);
-        files.forEach(file => processFile(file));
+        setUploadedFiles(prev => [...prev, ...files.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          status: 'processing' as const
+        }))]);
+        
+        setTimeout(() => {
+          setUploadedFiles(prev => prev.map(file => ({
+            ...file,
+            status: 'completed' as const,
+            extractedData: {
+              dodavatel: 'ACME s.r.o.',
+              castka: '12 500 Kč',
+              datum: '25.6.2025',
+              dph: '2 625 Kč'
+            }
+          })));
+        }, 3000);
       }
     };
 
@@ -579,6 +550,14 @@ export default function AIAccountantApp() {
           <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
             Hromadné zpracování
           </button>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h4 className="font-medium text-blue-900 mb-2">🚧 Zatím simulace</h4>
+          <p className="text-sm text-blue-800">
+            Skutečné AI zpracování dokumentů bude přidáno v další verzi. 
+            Nyní můžete testovat upload - AI zatím simuluje extrakci dat.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -616,15 +595,6 @@ export default function AIAccountantApp() {
                 PDF, JPG, PNG do 10MB
               </p>
             </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">🤖 AI zpracování</h4>
-              <p className="text-sm text-blue-800">
-                AI automaticky rozpozná text z dokumentů pomocí OCR, extrahuje klíčové údaje 
-                (dodavatel, částka, datum, DPH) a navrhne správné zaúčtování podle 
-                české legislativy včetně upozornění na možná rizika.
-              </p>
-            </div>
           </div>
 
           <div className="space-y-4">
@@ -640,81 +610,35 @@ export default function AIAccountantApp() {
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-gray-900 truncate">{file.name}</span>
-                      <div className="flex items-center gap-2">
-                        {file.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
-                        {file.status === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          file.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
-                          file.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                          file.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {file.status === 'uploading' ? 'Nahrávám...' :
-                           file.status === 'processing' ? 'Zpracovává AI...' :
-                           file.status === 'completed' ? 'Hotovo' : 'Chyba'}
-                        </span>
-                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        file.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {file.status === 'processing' ? 'Zpracovává...' : 'Hotovo'}
+                      </span>
                     </div>
                     
-                    {(file.status === 'uploading' || file.status === 'processing') && (
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${file.progress || 0}%` }}
-                        ></div>
-                      </div>
-                    )}
-
-                    {file.status === 'error' && (
-                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                        {file.error}
+                    {file.status === 'processing' && (
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-purple-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                       </div>
                     )}
                     
                     {file.extractedData && (
                       <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                        <h5 className="font-medium text-gray-900 mb-2">AI analýza dokončena:</h5>
-                        
-                        {file.extractedData.structuredData ? (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div><strong>Dodavatel:</strong> {file.extractedData.structuredData.dodavatel || 'N/A'}</div>
-                              <div><strong>Částka:</strong> {file.extractedData.structuredData.castka_celkem || 'N/A'}</div>
-                              <div><strong>Datum:</strong> {file.extractedData.structuredData.datum_vystaveni || 'N/A'}</div>
-                              <div><strong>DPH:</strong> {file.extractedData.structuredData.dph_castka || 'N/A'}</div>
-                            </div>
-                            
-                            {file.extractedData.structuredData.zauctovani_navrh && (
-                              <div className="mt-3 p-2 bg-blue-50 rounded text-sm">
-                                <strong>Návrh zaúčtování:</strong><br />
-                                MD {file.extractedData.structuredData.zauctovani_navrh.md} / 
-                                DAL {file.extractedData.structuredData.zauctovani_navrh.dal}<br />
-                                {file.extractedData.structuredData.zauctovani_navrh.popis}
-                              </div>
-                            )}
-
-                            {file.extractedData.structuredData.upozorneni && (
-                              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                                <strong>⚠️ Upozornění:</strong> {file.extractedData.structuredData.upozorneni}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-600 max-h-32 overflow-y-auto">
-                            <strong>Rozpoznaný text:</strong><br />
-                            {file.extractedData.extractedText?.substring(0, 300)}...
-                          </div>
-                        )}
-
+                        <h5 className="font-medium text-gray-900 mb-2">Simulovaná extrakce:</h5>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><strong>Dodavatel:</strong> {file.extractedData.dodavatel}</div>
+                          <div><strong>Částka:</strong> {file.extractedData.castka}</div>
+                          <div><strong>Datum:</strong> {file.extractedData.datum}</div>
+                          <div><strong>DPH:</strong> {file.extractedData.dph}</div>
+                        </div>
                         <div className="mt-3 flex gap-2">
                           <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-                            Schválit zaúčtování
+                            Schválit
                           </button>
                           <button className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors">
                             Upravit
-                          </button>
-                          <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
-                            Detail
                           </button>
                         </div>
                       </div>
