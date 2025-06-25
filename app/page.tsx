@@ -61,7 +61,7 @@ export default function HomePage() {
   ]);
   
   const fileInputRef = useRef(null);
-  const chatEndRef = useRef(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
