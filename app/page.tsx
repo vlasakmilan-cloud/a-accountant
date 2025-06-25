@@ -197,7 +197,7 @@ export default function AIAccountantApp() {
     {
       id: 1,
       type: 'ai',
-      content: 'Dobrý den! Jsem váš AI účetní asistent. Mohu vám pomoci s účetnictvím, daňovými povinnostmi a legislativou. Co potřebujete vyřešit?'
+      content: 'Dobrý den! Jsem váš AI účetní asistent - Milanův daňový poradce. Specializuji se na české účetnictví, DPH a daňovou legislativu. Co potřebujete vyřešit?'
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -228,6 +228,7 @@ export default function AIAccountantApp() {
     { id: 'reports', name: 'Reporty', icon: TrendingUp },
   ];
 
+  // SKUTEČNÉ AI VOLÁNÍ - NAHRADILO SIMULACI
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
@@ -238,29 +239,46 @@ export default function AIAccountantApp() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = inputMessage;
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulace AI odpovědi
-    setTimeout(() => {
+    try {
+      // Skutečné volání AI API s vaším promptem
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentMessage
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Chyba při komunikaci s AI');
+      }
+
+      const data = await response.json();
+      
       const aiResponse: Message = {
         id: Date.now() + 1,
         type: 'ai',
-        content: generateAIResponse(inputMessage)
+        content: data.message || 'Omlouvám se, došlo k chybě při zpracování.'
       };
-      setMessages(prev => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 1500);
-  };
 
-  const generateAIResponse = (message: string): string => {
-    const responses = [
-      `Pro účtování této operace doporučuji použít účty MD 518 (Ostatní služby) a DAL 321 (Dodavatelé). Nezapomeňte na správné zaúčtování DPH podle aktuální sazby 21%.`,
-      `Podle aktuální legislativy je nutné tuto transakci zdokumentovat a archivovat po dobu 10 let. Upozorňuji, že u této operace může být riziko při daňové kontrole.`,
-      `Tato operace se účtuje na účet 501 (Spotřeba materiálu). DPH si můžete uplatnit v plné výši, pokud se jedná o majetek používaný pro podnikání.`,
-      `Doporučuji konzultovat tuto operaci s daňovým poradcem. Mohlo by se jednat o skrytý příjem, který by mohl být předmětem dodatečného zdanění.`
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+      setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorResponse: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: 'Omlouvám se, momentálně nemohu odpovědět. Zkuste to prosím později. Možná není nastaven OpenAI API klíč.'
+      };
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const startVoiceRecording = () => {
@@ -376,7 +394,7 @@ export default function AIAccountantApp() {
           <Bot className="w-6 h-6 text-purple-600" />
           AI Účetní Asistent
         </h2>
-        <p className="text-sm text-gray-600 mt-1">Specializace: České účetnictví, DPH, daňové poradenství</p>
+        <p className="text-sm text-gray-600 mt-1">🇨🇿 Milanův daňový poradce - Specializace: České účetnictví, DPH, daňová legislativa</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -391,7 +409,7 @@ export default function AIAccountantApp() {
                 )}
               </div>
               <div className={`px-4 py-3 rounded-2xl ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
             </div>
           </div>
@@ -419,10 +437,10 @@ export default function AIAccountantApp() {
       <div className="p-6 border-t border-gray-200">
         <div className="flex gap-2 mb-3">
           {[
-            'Jak zaúčtovat fakturu?',
+            'Jak zaúčtovat fakturu za PHM?',
             'DPH sazby 2025',
-            'Odpočet DPH za PHM',
-            'Účetní uzávěrka'
+            'Odpočet DPH u materiálu',
+            'Kontrolní hlášení'
           ].map((suggestion) => (
             <button
               key={suggestion}
@@ -441,7 +459,7 @@ export default function AIAccountantApp() {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Zeptejte se na účetnictví, daně, legislativu..."
+              placeholder="Zeptejte se na český daňový či účetní problém..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
             />
             <button
@@ -453,7 +471,7 @@ export default function AIAccountantApp() {
           </div>
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim()}
+            disabled={!inputMessage.trim() || isTyping}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-4 h-4" />
