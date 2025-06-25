@@ -4,7 +4,7 @@ import {
   Home, Brain, Menu, X, Bell, Search, 
   TrendingUp, DollarSign, Target, Sparkles,
   FileText, Calculator, BarChart3, Settings,
-  User, ChevronRight, ArrowUp
+  User, ArrowUp
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -56,34 +56,10 @@ export default function HomePage() {
       {/* Beautiful Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          {
-            title: 'Celkové příjmy',
-            value: 2450000,
-            change: '+12%',
-            icon: TrendingUp,
-            color: 'green'
-          },
-          {
-            title: 'Celkové výdaje', 
-            value: 1850000,
-            change: '+5%',
-            icon: DollarSign,
-            color: 'red'
-          },
-          {
-            title: 'Čistý zisk',
-            value: 600000,
-            change: '+18%',
-            icon: Target,
-            color: 'blue'
-          },
-          {
-            title: 'AI zpracování',
-            value: 156,
-            change: '+23',
-            icon: Sparkles,
-            color: 'purple'
-          }
+          { title: 'Celkové příjmy', value: 2450000, change: '+12%', icon: TrendingUp, color: 'green' },
+          { title: 'Celkové výdaje', value: 1850000, change: '+5%', icon: DollarSign, color: 'red' },
+          { title: 'Čistý zisk', value: 600000, change: '+18%', icon: Target, color: 'blue' },
+          { title: 'AI zpracování', value: 156, change: '+23', icon: Sparkles, color: 'purple' }
         ].map((stat, index) => (
           <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
@@ -96,18 +72,8 @@ export default function HomePage() {
                   }
                 </p>
                 <div className="flex items-center mt-2">
-                  <ArrowUp className={`w-4 h-4 mr-1 ${
-                    stat.color === 'green' ? 'text-green-600' : 
-                    stat.color === 'blue' ? 'text-blue-600' : 
-                    stat.color === 'purple' ? 'text-purple-600' : 'text-gray-600'
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    stat.color === 'green' ? 'text-green-600' : 
-                    stat.color === 'blue' ? 'text-blue-600' : 
-                    stat.color === 'purple' ? 'text-purple-600' : 'text-gray-600'
-                  }`}>
-                    {stat.change}
-                  </span>
+                  <ArrowUp className="w-4 h-4 mr-1 text-green-600" />
+                  <span className="text-sm font-medium text-green-600">{stat.change}</span>
                   <span className="text-sm text-gray-500 ml-1">vs minulý měsíc</span>
                 </div>
               </div>
@@ -115,13 +81,13 @@ export default function HomePage() {
                 stat.color === 'green' ? 'bg-green-100' :
                 stat.color === 'red' ? 'bg-red-100' :
                 stat.color === 'blue' ? 'bg-blue-100' :
-                stat.color === 'purple' ? 'bg-purple-100' : 'bg-gray-100'
+                'bg-purple-100'
               }`}>
                 <stat.icon className={`w-6 h-6 ${
                   stat.color === 'green' ? 'text-green-600' :
                   stat.color === 'red' ? 'text-red-600' :
                   stat.color === 'blue' ? 'text-blue-600' :
-                  stat.color === 'purple' ? 'text-purple-600' : 'text-gray-600'
+                  'text-purple-600'
                 }`} />
               </div>
             </div>
@@ -133,9 +99,9 @@ export default function HomePage() {
       <div className="bg-green-50 border border-green-200 rounded-xl p-6">
         <div className="flex items-center justify-center">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-          <p className="text-lg font-semibold text-green-800">✅ Aplikace funguje krásně!</p>
+          <p className="text-lg font-semibold text-green-800">✅ Layout opravený!</p>
         </div>
-        <p className="text-green-600 mt-2 text-center">Design byl úspěšně přidán, můžeme pokračovat s AI funkcemi.</p>
+        <p className="text-green-600 mt-2 text-center">Aplikace má správnou strukturu a je připravená na AI funkce.</p>
       </div>
     </div>
   );
@@ -166,78 +132,76 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Beautiful Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out`}>
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl mr-3">
-                  <Brain className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">A!Accountant</h2>
-                  <p className="text-sm text-gray-500">AI Účetní Software</p>
-                </div>
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col`}>
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl mr-3">
+                <Brain className="w-8 h-8 text-white" />
               </div>
-              <button 
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">A!Accountant</h2>
+                <p className="text-sm text-gray-500">AI Účetní Software</p>
+              </div>
             </div>
+            <button 
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                  activeTab === item.id
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <div className="flex-1 text-left">
-                  <div className="font-medium">{item.label}</div>
-                  <div className={`text-xs ${activeTab === item.id ? 'text-blue-100' : 'text-gray-400'}`}>
-                    {item.description}
-                  </div>
+        </div>
+        
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                activeTab === item.id
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <div className="flex-1 text-left">
+                <div className="font-medium">{item.label}</div>
+                <div className={`text-xs ${activeTab === item.id ? 'text-blue-100' : 'text-gray-400'}`}>
+                  {item.description}
                 </div>
-                {activeTab === item.id && (
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                )}
-              </button>
-            ))}
-          </nav>
-          
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center space-x-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">Milan Vlasák</p>
-                <p className="text-sm text-gray-500 truncate">milan@vlasak.cloud</p>
-              </div>
+              {activeTab === item.id && (
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              )}
+            </button>
+          ))}
+        </nav>
+        
+        {/* User Profile */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center space-x-3 p-4 rounded-xl bg-gray-50">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 truncate">Milan Vlasák</p>
+              <p className="text-sm text-gray-500 truncate">milan@vlasak.cloud</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-72 min-h-screen flex flex-col">
-        {/* Beautiful Header */}
+      {/* Main Content Area */}
+      <div className="flex-1 lg:ml-0 flex flex-col min-h-screen">
+        {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
@@ -275,7 +239,7 @@ export default function HomePage() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 bg-gray-50">
           {renderContent()}
         </main>
       </div>
@@ -288,7 +252,5 @@ export default function HomePage() {
         />
       )}
     </div>
-  );
-}
   );
 }
