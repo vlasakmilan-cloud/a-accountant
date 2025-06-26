@@ -1,101 +1,91 @@
-import { NextRequest, NextResponse } from 'next/server';
+'use client'
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+import { useState } from 'react'
+import Link from 'next/link'
 
-const SYSTEM_PROMPT = `Tvůj hlavní úkol:
-- analyzovat faktury (vystavené i přijaté)
-- rozpoznat klíčové daňové údaje
-- navrhnout zaúčtování a kategorizaci
-- připravit podklady pro měsíční přiznání k DPH a kontrolní hlášení
-- připravit roční přiznání k dani z příjmů FO nebo PO
-- upozorňovat na jakýkoli možný rozpor s aktuální legislativou
-
-Nikdy nic neodesílej sám. Milan je vždy odpovědný za finální kontrolu a podání.
-
-Jsi daňový a účetní poradce Milana. Pracuješ výhradně podle právního řádu České republiky (zejména zákon o dani z příjmů, zákon o DPH, daňový řád a zákon o účetnictví).
-
-Pokud si nejsi jistý, vždy napiš: "Vyžaduje konzultaci s daňovým poradcem."
-
-Využívej tyto zdroje:
-- Zákony ČR: https://www.zakonyprolidi.cz
-- Finanční správa ČR: https://www.financnisprava.cz
-- Formuláře: https://www.mfcr.cz/cs/legislativa/danove-dokumenty
-
-Vždy uveď konkrétní paragraf zákona při odpovědi.`;
-
-export async function POST(req: NextRequest) {
-  try {
-    if (!OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API klíč není nastaven' }, 
-        { status: 500 }
-      );
-    }
-
-    const body = await req.json();
-    let messagesForAI;
-
-    // Podpora pro oba formáty - starý i nový
-    if (body.message) {
-      // Starý formát - jednotlivá zpráva
-      messagesForAI = [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT
-        },
-        {
-          role: 'user',
-          content: body.message
-        }
-      ];
-    } else if (body.messages) {
-      // Nový formát - conversation history
-      messagesForAI = [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT
-        },
-        ...body.messages
-      ];
-    } else {
-      return NextResponse.json(
-        { error: 'Zpráva nebo messages pole je povinné' }, 
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: messagesForAI,
-        temperature: 0.3,
-        max_tokens: 1000
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const aiMessage = data.choices[0]?.message?.content;
-
-    // Podpora pro oba formáty odpovědi
-    return NextResponse.json({ 
-      message: aiMessage,  // Starý formát
-      response: aiMessage  // Nový formát
-    });
-
-  } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json(
-      { error: 'Chyba při komunikaci s AI' }, 
-      { status: 500 }
-    );
-  }
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
 }
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content: 'Dobrý den! Jsem váš AI účetní asistent. Mohu vám pomoci s účetnictvím, daněmi a českými předpisy. Na co se chcete zeptat?'
+    }
+  ])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const sendMessage = async () => {
+    if (!input.trim()) return
+
+    const userMessage = input.trim()
+    setInput('')
+    setIsLoading(true)
+
+    // Add user message
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, { role: 'user', content: userMessage }]
+        })
+      })
+
+      const data = await response.json()
+      
+      // Add AI response
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.response || data.message || 'Omlouvám se, došlo k chybě při zpracování vaší zprávy.' 
+      }])
+    } catch (error) {
+      console.error('Chat error:', error)
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Omlouvám se, došlo k chybě při komunikaci se serverem. Zkuste to prosím znovu.' 
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
+  const quickQuestions = [
+    "Jaké jsou aktuální DPH sazby v ČR?",
+    "Jak zaúčtovat nákup kancelářských potřeb?",
+    "Rozdíl mezi účtem 518 a 538?",
+    "Kdy je potřeba podat DPH přiznání?",
+    "Jak správně zaúčtovat přijaté faktury?"
+  ]
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-64 bg-blue-800 text-white p-6">
+        <div className="mb-8">
+          <h1 className="text-xl font-bold">A!Accountant</h1>
+          <p className="text-blue-200 text-sm">AI účetní software</p>
+        </div>
+        
+        <nav className="space-y-4">
+          <Link href="/" className="flex items-center p-3 rounded-lg hover:bg-blue-700 text-blue-200 hover:text-white transition-colors">
+            <span className="mr-3">📊</span>
+            Dashboard
+          </Link>
+          <div className="flex items-center p-3 rounded-lg bg-blue-700 text-white">
+            <span className="mr-3">🤖</span>
+            AI Assistant
