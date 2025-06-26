@@ -32,11 +32,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { message } = await req.json();
+    const body = await req.json();
+    let messagesForAI;
 
-    if (!message) {
+    // Podpora pro oba formáty - starý i nový
+    if (body.message) {
+      // Starý formát - jednotlivá zpráva
+      messagesForAI = [
+        {
+          role: 'system',
+          content: SYSTEM_PROMPT
+        },
+        {
+          role: 'user',
+          content: body.message
+        }
+      ];
+    } else if (body.messages) {
+      // Nový formát - conversation history
+      messagesForAI = [
+        {
+          role: 'system',
+          content: SYSTEM_PROMPT
+        },
+        ...body.messages
+      ];
+    } else {
       return NextResponse.json(
-        { error: 'Zpráva je povinná' }, 
+        { error: 'Zpráva nebo messages pole je povinné' }, 
         { status: 400 }
       );
     }
@@ -49,16 +72,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: SYSTEM_PROMPT
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
+        messages: messagesForAI,
         temperature: 0.3,
         max_tokens: 1000
       }),
@@ -71,7 +85,11 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const aiMessage = data.choices[0]?.message?.content;
 
-    return NextResponse.json({ message: aiMessage });
+    // Podpora pro oba formáty odpovědi
+    return NextResponse.json({ 
+      message: aiMessage,  // Starý formát
+      response: aiMessage  // Nový formát
+    });
 
   } catch (error) {
     console.error('Chat API error:', error);
