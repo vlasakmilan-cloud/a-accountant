@@ -1,80 +1,135 @@
-import Link from 'next/link'
-
 export default function AnalyzeDocumentPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6 shadow-lg">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center mb-4">
-            <Link href="/" className="flex items-center text-purple-100 hover:text-white">
+      <div style={{ 
+        background: 'linear-gradient(to right, #9333ea, #7c3aed)', 
+        color: 'white', 
+        padding: '24px',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <a href="/" style={{ 
+              color: '#c4b5fd', 
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
               ← Zpět na dashboard
-            </Link>
+            </a>
           </div>
-          <h1 className="text-3xl font-bold">📄 Nahrát doklady</h1>
-          <p className="text-purple-100 mt-2">AI automaticky rozpozná obsah a navrhne správné účtování</p>
+          <h1 style={{ fontSize: '30px', fontWeight: 'bold', margin: 0 }}>
+            📄 Nahrát doklady
+          </h1>
+          <p style={{ color: '#c4b5fd', marginTop: '8px', margin: 0 }}>
+            AI automaticky rozpozná obsah a navrhne správné účtování
+          </p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+      <div style={{ maxWidth: '1024px', margin: '0 auto', padding: '24px' }}>
+        <div style={{ 
+          backgroundColor: 'white', 
+          borderRadius: '12px', 
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          padding: '24px' 
+        }}>
+          <h2 style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: '#1f2937',
+            marginBottom: '16px',
+            margin: 0
+          }}>
             📁 Přidejte dokumenty
           </h2>
 
           {/* Upload Zone */}
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-            <div className="text-6xl mb-4">📄</div>
-            <p className="text-lg font-medium text-gray-600">
+          <div style={{ 
+            border: '2px dashed #d1d5db', 
+            borderRadius: '12px', 
+            padding: '32px', 
+            textAlign: 'center',
+            marginTop: '16px'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
+            <p style={{ 
+              fontSize: '18px', 
+              fontWeight: '500', 
+              color: '#4b5563',
+              margin: 0,
+              marginBottom: '8px'
+            }}>
               Přetáhněte soubory zde nebo klikněte pro výběr
             </p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#6b7280', 
+              margin: 0,
+              marginBottom: '16px'
+            }}>
               Podporované formáty: JPG, PNG, PDF
             </p>
             
-            <button className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            <button style={{ 
+              marginTop: '16px',
+              padding: '8px 24px', 
+              backgroundColor: '#9333ea', 
+              color: 'white', 
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}>
               Vybrat soubory
             </button>
           </div>
 
           {/* Status */}
-          <div className="mt-6 p-4 bg-green-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">✅</div>
-              <div>
-                <h3 className="font-semibold text-green-800">Stránka funguje!</h3>
-                <p className="text-green-700 text-sm">
-                  Upload funkcionalita se přidává postupně. Nyní testujeme základní routing.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Features */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg text-center">
-              <div className="text-3xl mb-2">🤖</div>
-              <h4 className="font-semibold text-blue-800">AI Rozpoznávání</h4>
-              <p className="text-blue-700 text-sm">Automaticky přečte text z dokumentů</p>
-            </div>
-            <div className="p-4 bg-yellow-50 rounded-lg text-center">
-              <div className="text-3xl mb-2">💡</div>
-              <h4 className="font-semibold text-yellow-800">Chytré účtování</h4>
-              <p className="text-yellow-700 text-sm">AI navrhne správné MD/DA účty</p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg text-center">
-              <div className="text-3xl mb-2">⚡</div>
-              <h4 className="font-semibold text-purple-800">Rychlé zpracování</h4>
-              <p className="text-purple-700 text-sm">Výsledky během několika sekund</p>
+          <div style={{ 
+            marginTop: '24px', 
+            padding: '16px', 
+            backgroundColor: '#ecfdf5', 
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <div style={{ fontSize: '24px', marginRight: '12px' }}>✅</div>
+            <div>
+              <h3 style={{ 
+                fontWeight: '600', 
+                color: '#065f46',
+                margin: 0,
+                marginBottom: '4px'
+              }}>
+                Stránka funguje!
+              </h3>
+              <p style={{ 
+                color: '#047857', 
+                fontSize: '14px',
+                margin: 0
+              }}>
+                Upload funkcionalita se přidává postupně. Nyní testujeme základní routing.
+              </p>
             </div>
           </div>
 
           {/* Back Button */}
-          <div className="mt-6 text-center">
-            <Link href="/" className="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+          <div style={{ marginTop: '24px', textAlign: 'center' }}>
+            <a href="/" style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '12px 24px', 
+              backgroundColor: '#4b5563', 
+              color: 'white', 
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '16px'
+            }}>
               ← Zpět na hlavní stránku
-            </Link>
+            </a>
           </div>
         </div>
       </div>
