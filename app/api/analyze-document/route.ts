@@ -1,102 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-const DOCUMENT_ANALYSIS_PROMPT = `Jsi český daňový poradce. Analyzuj text z faktury a extrahuj klíčové údaje.
-
-ÚKOL: Z textu faktury extrahuj strukturované údaje ve formátu JSON.
-
-POŽADOVANÝ VÝSTUP JSON:
-{
-  "dodavatel": "název firmy",
-  "ico": "IČO pokud je uvedeno",
-  "dic": "DIČ pokud je uvedeno", 
-  "castka_bez_dph": "částka bez DPH v Kč",
-  "dph_sazba": "DPH sazba v %",
-  "dph_castka": "výše DPH v Kč",
-  "castka_celkem": "celková částka včetně DPH v Kč",
-  "datum_vystaveni": "datum vystavení faktury",
-  "datum_splatnosti": "datum splatnosti",
-  "cislo_faktury": "číslo faktury",
-  "predmet_plneni": "popis zboží/služeb",
-  "zauctovani_navrh": {
-    "md": "návrh účtu MD (např. 501, 518)",
-    "dal": "návrh účtu DAL (např. 321, 331)",
-    "popis": "popis účetního případu"
-  },
-  "dph_typ": "standardní/snížená/osvobozená/reverse_charge",
-  "upozorneni": "případné legislativní upozornění",
-  "kvalita_rozpoznani": "vysoká/střední/nízká - podle čitelnosti"
-}
-
-Pokud nějaký údaj nenajdeš, použij null.
-Při návrhu zaúčtování dodržuj české účetní standardy.
-Upozorni na případné nesrovnalosti s DPH nebo legislativou.`;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('📄 Analyze Document API called')
+    
     if (!OPENAI_API_KEY) {
+      console.error('❌ OPENAI_API_KEY není nastaven!')
       return NextResponse.json(
-        { error: 'OpenAI API klíč není nastaven' }, 
+        { error: 'API klíč není nastaven' }, 
         { status: 500 }
-      );
+      )
     }
 
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-
-    if (!file) {
-      return NextResponse.json(
-        { error: 'Žádný soubor nebyl nahrán' }, 
-        { status: 400 }
-      );
-    }
-
-    // Kontrola typu souboru
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Nepodporovaný typ souboru. Použijte JPG, PNG nebo PDF.' }, 
-        { status: 400 }
-      );
-    }
-
-    // Kontrola velikosti (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Soubor je příliš velký. Maximum je 10MB.' }, 
-        { status: 400 }
-      );
-    }
-
-    console.log('Zpracovávám soubor:', file.name, file.type, file.size);
-
-    // Převod souboru na buffer pro zpracování
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Pro jednoduchost zatím simulujeme OCR
-    // V produkci by zde bylo skutečné OCR zpracování
-    const simulatedText = `
-    FAKTURA č. 2025-001
-    Dodavatel: ACME s.r.o.
-    IČO: 12345678
-    DIČ: CZ12345678
+    const body = await req.json()
+    const { fileContent, fileName } = body
     
-    Odběratel: Vaše firma s.r.o.
-    
-    Předmět plnění: Kancelářské potřeby
-    Datum vystavení: 25.6.2025
-    Datum splatnosti: 25.7.2025
-    
-    Částka bez DPH: 10 330 Kč
-    DPH 21%: 2 169 Kč
-    Celkem k úhradě: 12 499 Kč
-    `;
+    console.log('📝 Analyzing file:', fileName)
+    console.log('📄 Content length:', fileContent?.length || 0)
 
-    console.log('Simulace OCR dokončena, odesílám k AI analýze...');
+    if (!fileContent || !fileName) {
+      return NextResponse.json(
+        { error: 'fileContent a fileName jsou povinné' }, 
+        { status: 400 }
+      )
+    }
 
-    // AI analýza extrahovaného textu
+    const analysisPrompt = `ÚKOL: Analyzuj obsah účetního dokumentu a extrahuj klíčové údaje.
+
+NÁZEV SOUBORU: ${fileName}
+
+OBSAH DOKUMENTU:
+${fileContent.substring(0, 3000)}${fileContent.length > 3000 ? '\n...(text zkrácen)' : ''}
+
+INSTRUKCE:
+Analyzuj obsah a extrahuj účetní údaje. Odpověz POUZE ve formátu JSON bez dalšího textu:
+
+{
+  "typ": "faktura_prijata|faktura_vystavena|pokladni_doklad|dodaci_list|vratka|banka_vypis",
+  "dodavatel": "název firmy nebo 'nenalezeno'",
+  "castka": "částka s měnou nebo 'nenalezeno'",
+  "datum": "DD.MM.YYYY nebo 'nenalezeno'",
+  "cisloDokladu": "číslo dokladu nebo 'nenalezeno'", 
+  "popis": "stručný popis nebo 'účetní doklad'",
+  "ucty": "MD XXXXX / DA XXXXX",
+  "confidence": 0.8,
+  "zduvodneni": "krátké zdůvodnění analýzy"
+}
+
+ÚČETNÍ PRAVIDLA (České účetnictví):
+- Faktura přijatá: MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)
+- Faktura vystavená: MD 311000 (Odběratelé) / DA 601000 (Tržby za služby)  
+- Pokladní doklad výdaj: MD 501000 (Spotřeba materiálu) / DA 211000 (Pokladna)
+- Pokladní doklad příjem: MD 211000 (Pokladna) / DA 601000 (Tržby)
+- Dodací list: MD 132000 (Zboží na skladě) / DA 321000 (Dodavatelé)
+- Bankovní výpis: MD 221000 (Bankovní účty) / DA dle účelu platby
+
+PRAVIDLA ANALÝZY:
+1. Pokud obsahuje slova "faktura", "invoice" → typ: faktura_prijata nebo faktura_vystavena
+2. Pokud obsahuje "doklad", "účtenka", "paragon" → typ: pokladni_doklad  
+3. Hledej částky ve formátech: "1000 Kč", "1.000,-", "€100", "$50"
+4. Hledej data ve formátech: DD.MM.YYYY, DD/MM/YYYY, YYYY-MM-DD
+5. Hledej čísla dokladů: "č.", "číslo", "No.", "number"
+6. Confidence: 0.9+ pokud najdeš všechny údaje, 0.7+ pokud většinu, 0.5+ pokud základní, 0.3 pokud jen název
+7. Vždy navrhni konkrétní účty MD/DA podle typu dokumentu
+
+ODPOVĚZ POUZE JSON - žádný další text!`
+
+    console.log('🤖 Calling OpenAI API...')
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -104,63 +77,191 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini', // Levnější model, stačí pro analýzu
         messages: [
           {
-            role: 'system',
-            content: DOCUMENT_ANALYSIS_PROMPT
-          },
-          {
             role: 'user',
-            content: `Analyzuj tento text z faktury:\n\n${simulatedText}`
+            content: analysisPrompt
           }
         ],
-        temperature: 0.1,
-        max_tokens: 1500
-      }),
-    });
+        max_tokens: 800,
+        temperature: 0.2 // Nízká kreativita pro přesnou analýzu
+      })
+    })
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorData = await response.text()
+      console.error('❌ OpenAI API Error:', response.status, errorData)
+      
+      // Fallback analýza při chybě API
+      return NextResponse.json({
+        typ: "faktura_prijata",
+        dodavatel: "API nedostupné - kontrola potřeba",
+        castka: "Nelze analyzovat",
+        datum: new Date().toLocaleDateString('cs-CZ'),
+        cisloDokladu: "Viz soubor",
+        popis: "Vyžaduje ruční kontrolu",
+        ucty: "MD 518000 / DA 321000",
+        confidence: 0.2,
+        zduvodneni: "OpenAI API nedostupné - základní klasifikace"
+      })
     }
 
-    const aiData = await response.json();
-    const analysisResult = aiData.choices[0]?.message?.content;
+    const data = await response.json()
+    const aiResponse = data.choices[0]?.message?.content || ''
+    
+    console.log('✅ OpenAI Response:', aiResponse.substring(0, 200) + '...')
 
-    console.log('AI analýza dokončena');
-
-    // Pokus o parsování JSON odpovědi
-    let structuredData = null;
+    // Pokus o parsing JSON odpovědi
+    let analysisResult
     try {
-      // Extrakce JSON z AI odpovědi
-      const jsonMatch = analysisResult.match(/```json\n([\s\S]*?)\n```/) || 
-                       analysisResult.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        structuredData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      // Najdi JSON v odpovědi
+      const jsonMatch = aiResponse.match(/\{[\s\S]*?\}/g)
+      if (jsonMatch && jsonMatch.length > 0) {
+        analysisResult = JSON.parse(jsonMatch[0])
+        console.log('✅ JSON parsing úspěšný')
+      } else {
+        throw new Error('JSON not found in response')
       }
     } catch (parseError) {
-      console.log('Chyba při parsování JSON, použiji raw text');
+      console.log('⚠️ JSON parsing failed, using manual analysis...')
+      
+      // Manuální analýza jako fallback
+      analysisResult = performManualAnalysis(fileContent, fileName)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        filename: file.name,
-        extractedText: simulatedText.trim(),
-        structuredData: structuredData,
-        rawAnalysis: analysisResult
-      }
-    });
+    // Validace a oprava výsledku
+    analysisResult = validateAndFixResult(analysisResult, fileName)
+    
+    console.log('🎯 Final analysis result:', analysisResult)
+    
+    return NextResponse.json(analysisResult)
 
   } catch (error) {
-    console.error('Chyba při zpracování dokumentu:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Chyba při zpracování dokumentu: ' + (error as Error).message 
-      }, 
-      { status: 500 }
-    );
+    console.error('❌ Analysis API error:', error)
+    
+    return NextResponse.json({
+      typ: "faktura_prijata",
+      dodavatel: "Systémová chyba",
+      castka: "Nelze analyzovat", 
+      datum: new Date().toLocaleDateString('cs-CZ'),
+      cisloDokladu: "Kontrola potřeba",
+      popis: "Ruční zpracování nutné",
+      ucty: "MD 518000 / DA 321000",
+      confidence: 0.1,
+      zduvodneni: `Systémová chyba: ${error.message}`
+    }, { status: 500 })
   }
+}
+
+// Manuální analýza jako fallback
+function performManualAnalysis(fileContent: string, fileName: string): any {
+  const result: any = { confidence: 0.4 }
+  
+  const lowerContent = fileContent.toLowerCase()
+  const lowerFileName = fileName.toLowerCase()
+  
+  // Určení typu dokumentu
+  if (lowerContent.includes('faktura') || lowerFileName.includes('faktura')) {
+    result.typ = 'faktura_prijata'
+    result.ucty = 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
+  } else if (lowerContent.includes('doklad') || lowerContent.includes('účtenka') || lowerContent.includes('paragon')) {
+    result.typ = 'pokladni_doklad'
+    result.ucty = 'MD 501000 (Spotřeba) / DA 211000 (Pokladna)'
+  } else if (lowerContent.includes('výpis') || lowerFileName.includes('bank')) {
+    result.typ = 'banka_vypis'
+    result.ucty = 'MD 221000 (Bankovní účty) / DA dle účelu'
+  } else if (lowerContent.includes('dodací') || lowerFileName.includes('dodaci')) {
+    result.typ = 'dodaci_list'
+    result.ucty = 'MD 132000 (Zboží) / DA 321000 (Dodavatelé)'
+  } else {
+    result.typ = 'faktura_prijata' // default
+    result.ucty = 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
+  }
+  
+  // Hledání částky
+  const amountMatches = fileContent.match(/(\d+[\s,\.]*\d*)\s*(Kč|CZK|czk|,-)/gi)
+  if (amountMatches && amountMatches.length > 0) {
+    const amounts = amountMatches.map(m => {
+      const num = parseFloat(m.replace(/[^\d,\.]/g, '').replace(',', '.'))
+      return { text: m.trim(), value: num }
+    }).filter(a => !isNaN(a.value))
+    
+    if (amounts.length > 0) {
+      const maxAmount = amounts.reduce((max, curr) => curr.value > max.value ? curr : max)
+      result.castka = maxAmount.text
+      result.confidence = Math.min(result.confidence + 0.2, 1.0)
+    }
+  }
+  
+  // Hledání data
+  const dateMatches = fileContent.match(/(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{4})/g)
+  if (dateMatches && dateMatches.length > 0) {
+    result.datum = dateMatches[0]
+    result.confidence = Math.min(result.confidence + 0.1, 1.0)
+  }
+  
+  // Hledání názvu firmy/dodavatele
+  const lines = fileContent.split('\n')
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    if ((trimmedLine.includes('s.r.o') || trimmedLine.includes('a.s.') || 
+         trimmedLine.includes('spol.') || trimmedLine.includes('Ltd.')) && 
+        trimmedLine.length < 100 && trimmedLine.length > 5) {
+      result.dodavatel = trimmedLine
+      result.confidence = Math.min(result.confidence + 0.1, 1.0)
+      break
+    }
+  }
+  
+  // Hledání čísla dokladu
+  const documentNumberMatches = fileContent.match(/(č\.|číslo|no\.|number|invoice).?\s*(\d+)/gi)
+  if (documentNumberMatches && documentNumberMatches.length > 0) {
+    result.cisloDokladu = documentNumberMatches[0]
+    result.confidence = Math.min(result.confidence + 0.1, 1.0)
+  }
+  
+  return result
+}
+
+// Validace a oprava výsledku
+function validateAndFixResult(result: any, fileName: string): any {
+  // Doplnění chybějících povinných polí
+  if (!result.dodavatel || result.dodavatel === 'nenalezeno') {
+    result.dodavatel = `Soubor: ${fileName}`
+  }
+  
+  if (!result.castka || result.castka === 'nenalezeno') {
+    result.castka = 'Nepodařilo se extrahovat'
+  }
+  
+  if (!result.datum || result.datum === 'nenalezeno') {
+    result.datum = new Date().toLocaleDateString('cs-CZ')
+  }
+  
+  if (!result.cisloDokladu || result.cisloDokladu === 'nenalezeno') {
+    result.cisloDokladu = 'Viz soubor'
+  }
+  
+  if (!result.popis) {
+    result.popis = 'Extrahováno z nahraného dokumentu'
+  }
+  
+  if (!result.ucty) {
+    result.ucty = 'MD 518000 / DA 321000'
+  }
+  
+  if (!result.confidence) {
+    result.confidence = 0.3
+  }
+  
+  if (!result.zduvodneni) {
+    result.zduvodneni = 'Automatická analýza obsahu dokumentu'
+  }
+  
+  if (!result.typ) {
+    result.typ = 'faktura_prijata'
+  }
+  
+  return result
 }
