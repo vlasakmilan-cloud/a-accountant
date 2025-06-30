@@ -1,88 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Inicializace OpenAI s kontrolou klíče
+// Inicializace OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
 })
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Starting document analysis API...')
-    console.log('🔑 OpenAI key available:', !!process.env.OPENAI_API_KEY)
     
     const body = await request.json()
     const { fileContent, fileName } = body
 
+    console.log(`📄 Analyzing file: ${fileName}`)
+    console.log(`📝 Content length: ${fileContent ? fileContent.length : 0}`)
+
+    // Kontrola vstupních dat
     if (!fileContent) {
       console.error('❌ Missing file content')
       return NextResponse.json(
-        { error: 'Chybí obsah souboru' },
+        { 
+          error: 'Chybí obsah souboru',
+          typ: "faktura_prijata",
+          dodavatel: "Chyba - chybí obsah",
+          castka: "0 Kč",
+          datum: new Date().toLocaleDateString('cs-CZ'),
+          cisloDokladu: "ERROR",
+          popis: "Chyba při načítání souboru",
+          ucty: "MD 518000 / DA 321000",
+          confidence: 0.1,
+          zduvodneni: "Chybí obsah souboru pro analýzu"
+        },
         { status: 400 }
       )
     }
 
-    if (!process.env.OPENAI_API_KEY && !process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    // Kontrola OpenAI klíče
+    if (!process.env.OPENAI_API_KEY) {
       console.error('❌ Missing OpenAI API key')
-      return NextResponse.json(
-        { error: 'Chybí OpenAI API klíč' },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        typ: "faktura_prijata",
+        dodavatel: "Chyba konfigurace",
+        castka: "0 Kč", 
+        datum: new Date().toLocaleDateString('cs-CZ'),
+        cisloDokladu: "CONFIG_ERROR",
+        popis: "Chyba konfigurace API",
+        ucty: "MD 518000 / DA 321000",
+        confidence: 0.1,
+        zduvodneni: "Chybí OpenAI API klíč - kontaktujte administrátora"
+      })
     }
 
-    console.log(`📄 Analyzing file: ${fileName}`)
-    console.log(`📝 Content length: ${fileContent.length}`)
-    console.log(`📝 Content preview: ${fileContent.substring(0, 200)}...`)
+    console.log('🤖 Calling OpenAI API...')
 
     // Pokročilý prompt pro české účetnictví
-    const systemPrompt = `Jsi expert na české účetnictví a daňové právo. Tvým úkolem je analyzovat účetní dokument a extrahovat klíčové informace.
+    const systemPrompt = `Jsi expert na české účetnictví a daňové právo. Analyzuješ účetní dokumenty a extrahuješ klíčové informace.
 
-PRAVIDLA ANALÝZY:
-- Rozpoznej typ dokumentu (faktura přijatá/vystavená, pokladní doklad, bankovní výpis, atd.)
-- Extrahuj všechny důležité údaje (dodavatel, částka, datum, číslo dokladu, popis)
-- Navrhni správné účtování podle českých účetních předpisů
-- Upozorni na možné daňové aspekty (DPH, odpočty, atd.)
-- Poskytni zdůvodnění účtování
+ÚKOL: Analyzuj obsah dokumentu a vrať POUZE JSON odpověď.
 
-FORMÁT ODPOVĚDI (pouze JSON, bez dalšího textu):
+FORMÁT ODPOVĚDI:
 {
-  "typ": "faktura_prijata|faktura_vystavena|pokladni_doklad|banka_vypis|dodaci_list|vratka",
-  "dodavatel": "název firmy nebo osoby",
-  "odberatel": "název naší firmy (pokud je uvedený)",
-  "castka": "celková částka s měnou",
-  "datum": "datum dokladu (DD.MM.YYYY)",
-  "cisloDokladu": "číslo faktury/dokladu",
+  "typ": "faktura_prijata",
+  "dodavatel": "název firmy",
+  "castka": "částka s měnou",
+  "datum": "DD.MM.YYYY",
+  "cisloDokladu": "číslo dokladu",
   "popis": "popis služby/zboží",
-  "dph": "informace o DPH (sazba, částka)",
-  "ucty": "MD účet / DA účet (čísla a názvy)",
+  "dph": "info o DPH",
+  "ucty": "MD číslo účtu (název) / DA číslo účtu (název)",
   "confidence": 0.85,
-  "zduvodneni": "zdůvodnění navrhovaného účtování"
+  "zduvodneni": "zdůvodnění účtování"
 }
 
-ČESKÉ ÚČETNÍ ÚČTY (příklady):
+ČESKÉ ÚČTY:
 - 211000 Pokladna
-- 221000 Bankovní účty  
-- 311000 Odběratelé
-- 321000 Dodavatelé
-- 501000 Spotřeba materiálu
-- 511000 Opravy a udržování
+- 221000 Bankovní účty
+- 321000 Dodavatelé  
 - 518000 Ostatní služby
-- 521000 Mzdové náklady
-- 531000 Daň silniční
-- 538000 Ostatní daně a poplatky
+- 501000 Spotřeba materiálu
 
-DŮLEŽITÉ: Odpověz POUZE v JSON formátu, žádný další text!`
+DŮLEŽITÉ: Pouze JSON, žádný další text!`
 
-    const userPrompt = `Analyzuj tento účetní dokument:
+    const userPrompt = `Analyzuj dokument:
 
-NÁZEV SOUBORU: ${fileName}
+SOUBOR: ${fileName}
+OBSAH:
+${fileContent.substring(0, 3000)}
 
-OBSAH DOKUMENTU:
-${fileContent.substring(0, 4000)}
-
-Proveď podrobnou analýzu a vrať JSON odpověď podle zadaných pravidel.`
-
-    console.log('🤖 Calling OpenAI API...')
+Vrať JSON analýzu.`
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -91,89 +97,86 @@ Proveď podrobnou analýzu a vrať JSON odpověď podle zadaných pravidel.`
         { role: "user", content: userPrompt }
       ],
       temperature: 0.3,
-      max_tokens: 1200
+      max_tokens: 800
     })
 
     const aiResponse = completion.choices[0]?.message?.content
+
+    console.log('🎯 OpenAI response received:', !!aiResponse)
 
     if (!aiResponse) {
       throw new Error('OpenAI nevrátila odpověď')
     }
 
-    console.log('🎯 OpenAI response:', aiResponse)
-
-    // Pokus o parsování JSON odpovědi
+    // Parsování JSON odpovědi
     let analysisResult
     try {
-      // Očistit odpověď od možných markdown bloků
-      const cleanResponse = aiResponse
+      // Vyčistit markdown a extra text
+      let cleanResponse = aiResponse.trim()
+      
+      // Najít JSON blok
+      const jsonStart = cleanResponse.indexOf('{')
+      const jsonEnd = cleanResponse.lastIndexOf('}') + 1
+      
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        cleanResponse = cleanResponse.substring(jsonStart, jsonEnd)
+      }
+      
+      // Odstranit markdown bloky
+      cleanResponse = cleanResponse
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
-        .replace(/^[^{]*/, '') // Odstranit text před {
-        .replace(/[^}]*$/, '') // Odstranit text za }
         .trim()
       
-      console.log('🧹 Cleaned response:', cleanResponse)
+      console.log('🧹 Cleaned response for parsing:', cleanResponse.substring(0, 200))
       
       analysisResult = JSON.parse(cleanResponse)
       
-      // Validace a doplnění základních hodnot
-      if (!analysisResult.confidence) {
-        analysisResult.confidence = 0.7
-      }
+      // Validace a doplnění
+      analysisResult.confidence = analysisResult.confidence || 0.7
+      analysisResult.typ = analysisResult.typ || 'faktura_prijata'
+      analysisResult.datum = analysisResult.datum || new Date().toLocaleDateString('cs-CZ')
+      analysisResult.ucty = analysisResult.ucty || 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
       
-      if (!analysisResult.typ) {
-        analysisResult.typ = 'faktura_prijata'
-      }
-
-      if (!analysisResult.datum) {
-        analysisResult.datum = new Date().toLocaleDateString('cs-CZ')
-      }
-
-      if (!analysisResult.ucty) {
-        analysisResult.ucty = 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
-      }
-
-      console.log('✅ Successfully parsed analysis result:', analysisResult)
+      console.log('✅ Successfully parsed result')
 
     } catch (parseError) {
-      console.error('❌ JSON parsing error:', parseError)
-      console.log('📝 Raw AI response:', aiResponse)
+      console.error('❌ JSON parsing failed:', parseError)
+      console.log('📝 Raw response:', aiResponse)
       
-      // Fallback struktura při chybě parsování
+      // Fallback výsledek
       analysisResult = {
         typ: "faktura_prijata",
-        dodavatel: "Rozpoznáno z obsahu",
+        dodavatel: "Analyzováno AI - zkontrolujte ručně",
         castka: "Viz obsah dokumentu",
         datum: new Date().toLocaleDateString('cs-CZ'),
-        cisloDokladu: "Rozpoznáno z obsahu",
-        popis: "AI analýza proběhla - data v obsahu",
-        dph: "Zkontrolujte v obsahu dokumentu",
+        cisloDokladu: "Viz obsah",
+        popis: "AI analýza dokončena - ověřte údaje",
+        dph: "Zkontrolujte v dokumentu",
         ucty: "MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)",
         confidence: 0.6,
-        zduvodneni: `AI analýza provedena, ale JSON parsing selhal. Zkontrolujte ruční extrakci údajů.`
+        zduvodneni: "AI analýza proběhla, JSON parsing selhal - zkontrolujte obsah ručně"
       }
     }
 
-    console.log('📤 Returning result:', analysisResult)
+    console.log('📤 Returning analysis result')
     return NextResponse.json(analysisResult)
 
   } catch (error) {
-    console.error('❌ API Error:', error)
+    console.error('❌ Complete API error:', error)
     
-    const errorResult = {
+    // Error fallback
+    return NextResponse.json({
       typ: "faktura_prijata",
-      dodavatel: "API Error - zkontrolujte manuálně",
-      castka: "Chyba při načítání",
+      dodavatel: "Chyba při analýze",
+      castka: "0 Kč",
       datum: new Date().toLocaleDateString('cs-CZ'),
-      cisloDokladu: "Chyba",
-      popis: "Chyba při zpracování - zkontrolujte obsah ručně",
-      dph: "Nerozpoznáno",
+      cisloDokladu: "ERROR",
+      popis: "Systémová chyba - zkuste později",
+      dph: "Neanalyzováno",
       ucty: "MD 518000 / DA 321000",
       confidence: 0.2,
-      zduvodneni: `API chyba: ${String(error)}. Zkuste později nebo kontaktujte podporu.`
-    }
-    
-    return NextResponse.json(errorResult, { status: 500 })
+      zduvodneni: `Chyba: ${String(error).substring(0, 100)}`
+    }, { status: 500 })
   }
 }
