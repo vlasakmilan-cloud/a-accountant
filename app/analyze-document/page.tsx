@@ -241,8 +241,8 @@ ${detectedData.ucty || 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'}
     try {
       console.log('🖼️ Starting automatic OCR recognition...')
       
-      // Create Tesseract worker
-      const worker = await createWorker({
+      // Create Tesseract worker with correct API
+      const worker = await createWorker('ces+eng', 1, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
             const progress = Math.round(m.progress * 100)
@@ -255,10 +255,6 @@ ${detectedData.ucty || 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'}
           }
         }
       })
-      
-      // Set language to Czech and English
-      await worker.loadLanguage('ces+eng')
-      await worker.initialize('ces+eng')
       
       // Recognize text
       const { data: { text, confidence } } = await worker.recognize(file)
