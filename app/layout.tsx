@@ -1,8 +1,4 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'A!Accountant - AI Účetní Software',
@@ -16,7 +12,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs">
-      <body className={inter.className}>{children}</body>
+      <body style={{ margin: 0, padding: 0, fontFamily: 'Arial, sans-serif' }}>
+        {children}
+      </body>
     </html>
   )
 }
