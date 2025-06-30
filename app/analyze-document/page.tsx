@@ -28,9 +28,36 @@ interface UploadedFile {
   ocrProgress?: number
 }
 
+interface EditModalData {
+  isOpen: boolean
+  fileIndex: number
+  data: {
+    dodavatel: string
+    castka: string
+    datum: string
+    cisloDokladu: string
+    popis: string
+    typPlatby: string
+    typNakupu: string
+  }
+}
+
 export default function AnalyzeDocumentPage() {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [editModal, setEditModal] = useState<EditModalData>({
+    isOpen: false,
+    fileIndex: -1,
+    data: {
+      dodavatel: '',
+      castka: '',
+      datum: '',
+      cisloDokladu: '',
+      popis: '',
+      typPlatby: 'karta',
+      typNakupu: 'material'
+    }
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -57,7 +84,105 @@ export default function AnalyzeDocumentPage() {
     }
   }
 
-  // AUTOMATICKÉ ČTENÍ VŠECH FORMÁTŮ
+  // Otevření modalu pro úpravu údajů
+  const openEditModal = (fileIndex: number) => {
+    const file = files[fileIndex]
+    if (!file.extractedData) return
+
+    setEditModal({
+      isOpen: true,
+      fileIndex,
+      data: {
+        dodavatel: file.extractedData.dodavatel || '',
+        castka: file.extractedData.castka || '',
+        datum: file.extractedData.datum || '',
+        cisloDokladu: file.extractedData.cisloDokladu || '',
+        popis: file.extractedData.popis || '',
+        typPlatby: detectPaymentType(file.fileContent || ''),
+        typNakupu: detectPurchaseType(file.extractedData.popis || '')
+      }
+    })
+  }
+
+  // Detekce typu platby z obsahu
+  const detectPaymentType = (content: string): string => {
+    const contentLower = content.toLowerCase()
+    if (contentLower.includes('kartou') || contentLower.includes('platba kartou')) return 'karta'
+    if (contentLower.includes('hotově') || contentLower.includes('pokladna')) return 'hotove'
+    if (contentLower.includes('faktura') || contentLower.includes('na fakturu')) return 'faktura'
+    return 'karta' // default
+  }
+
+  // Detekce typu nákupu z popisu
+  const detectPurchaseType = (popis: string): string => {
+    const opisLower = popis.toLowerCase()
+    if (opisLower.includes('hardware') || opisLower.includes('počítač') || opisLower.includes('it')) return 'material'
+    if (opisLower.includes('služ') || opisLower.includes('poradenství') || opisLower.includes('licence')) return 'sluzby'
+    if (opisLower.includes('oprav') || opisLower.includes('údržb')) return 'opravy'
+    return 'material' // default
+  }
+
+  // Uložení upravených údajů a nová analýza
+  const saveEditedData = async () => {
+    const { fileIndex, data } = editModal
+    
+    // Sestavení nového obsahu pro AI analýzu
+    const editedContent = `UPRAVENÉ ÚDAJE:
+Dodavatel: ${data.dodavatel}
+Částka: ${data.castka}
+Datum: ${data.datum}
+Číslo dokladu: ${data.cisloDokladu}
+Popis: ${data.popis}
+Typ platby: ${data.typPlatby === 'karta' ? 'platba kartou' : data.typPlatby === 'hotove' ? 'hotově' : 'na fakturu'}
+Typ nákupu: ${data.typNakupu === 'material' ? 'materiál/hardware' : data.typNakupu === 'sluzby' ? 'služby' : 'opravy'}`
+
+    // Označit soubor jako analyzující se
+    setFiles(prev => prev.map((f, index) => 
+      index === fileIndex ? { ...f, status: 'analyzing' as const } : f
+    ))
+
+    // Zavřít modal
+    setEditModal(prev => ({ ...prev, isOpen: false }))
+
+    try {
+      // Zavolat AI analýzu s upravenými daty
+      const analysisResult = await analyzeDocument(editedContent, files[fileIndex].file.name + ' (upraveno)')
+
+      // Aktualizovat výsledky
+      setFiles(prev => prev.map((f, index) => 
+        index === fileIndex ? { 
+          ...f, 
+          status: 'completed' as const,
+          documentType: analysisResult.typ,
+          confidence: analysisResult.confidence,
+          extractedData: {
+            typ: analysisResult.typ,
+            dodavatel: data.dodavatel,
+            odberatel: analysisResult.odberatel,
+            castka: data.castka,
+            datum: data.datum,
+            cisloDokladu: data.cisloDokladu,
+            popis: data.popis,
+            dph: analysisResult.dph,
+            ucty: analysisResult.ucty,
+            zduvodneni: analysisResult.zduvodneni
+          },
+          aiSuggestion: analysisResult.ucty,
+          errorMessage: analysisResult.errorMessage
+        } : f
+      ))
+
+    } catch (error) {
+      console.error('❌ Error reanalyzing with edited data:', error)
+      setFiles(prev => prev.map((f, index) => 
+        index === fileIndex ? { 
+          ...f, 
+          status: 'error' as const, 
+          errorMessage: 'Chyba při analýze upravených údajů'
+        } : f
+      ))
+    }
+  }
   const extractFileContent = async (file: File, fileIndex: number): Promise<string> => {
     console.log(`🔍 Processing file: ${file.name} (${file.type})`)
     
@@ -771,7 +896,10 @@ Převeďte na podporovaný formát:
                             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors">
                               ✓ Schválit účtování
                             </button>
-                            <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm transition-colors">
+                            <button 
+                              onClick={() => openEditModal(index)}
+                              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm transition-colors"
+                            >
                               ✏️ Upravit údaje
                             </button>
                             <Link href="/chat" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm transition-colors">
@@ -838,6 +966,173 @@ Převeďte na podporovaný formát:
           </div>
         </div>
       </div>
+
+      {/* Modal pro úpravu údajů */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">
+              ✏️ Upravit údaje dokumentu
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Dodavatel */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Dodavatel
+                </label>
+                <input
+                  type="text"
+                  value={editModal.data.dodavatel}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    data: { ...prev.data, dodavatel: e.target.value }
+                  }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Název dodavatele"
+                />
+              </div>
+
+              {/* Částka */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Částka
+                </label>
+                <input
+                  type="text"
+                  value={editModal.data.castka}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    data: { ...prev.data, castka: e.target.value }
+                  }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="např. 11230 Kč"
+                />
+              </div>
+
+              {/* Datum a Číslo dokladu */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Datum
+                  </label>
+                  <input
+                    type="text"
+                    value={editModal.data.datum}
+                    onChange={(e) => setEditModal(prev => ({
+                      ...prev,
+                      data: { ...prev.data, datum: e.target.value }
+                    }))}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="DD.MM.YYYY"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Číslo dokladu
+                  </label>
+                  <input
+                    type="text"
+                    value={editModal.data.cisloDokladu}
+                    onChange={(e) => setEditModal(prev => ({
+                      ...prev,
+                      data: { ...prev.data, cisloDokladu: e.target.value }
+                    }))}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="FVC-9308/2025"
+                  />
+                </div>
+              </div>
+
+              {/* Popis */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Popis
+                </label>
+                <textarea
+                  value={editModal.data.popis}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    data: { ...prev.data, popis: e.target.value }
+                  }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows={3}
+                  placeholder="Popis nákupu/služby"
+                />
+              </div>
+
+              {/* Typ platby */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Typ platby (ovlivňuje DA účet)
+                </label>
+                <select
+                  value={editModal.data.typPlatby}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    data: { ...prev.data, typPlatby: e.target.value }
+                  }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="karta">Platba kartou → DA 221000 (Bankovní účty)</option>
+                  <option value="hotove">Hotově → DA 211000 (Pokladna)</option>
+                  <option value="faktura">Na fakturu → DA 321000 (Dodavatelé)</option>
+                </select>
+              </div>
+
+              {/* Typ nákupu */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Typ nákupu (ovlivňuje MD účet)
+                </label>
+                <select
+                  value={editModal.data.typNakupu}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    data: { ...prev.data, typNakupu: e.target.value }
+                  }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="material">Materiál/Hardware → MD 501000 (Spotřeba materiálu)</option>
+                  <option value="sluzby">Služby → MD 518000 (Ostatní služby)</option>
+                  <option value="opravy">Opravy → MD 511000 (Opravy a udržování)</option>
+                </select>
+              </div>
+
+              {/* Předpověď účtování */}
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm font-medium text-blue-800 mb-1">
+                  🎯 Předpověď účtování:
+                </p>
+                <p className="text-blue-700 font-mono text-sm">
+                  {editModal.data.typNakupu === 'material' ? 'MD 501000 (Spotřeba materiálu)' :
+                   editModal.data.typNakupu === 'sluzby' ? 'MD 518000 (Ostatní služby)' :
+                   'MD 511000 (Opravy a udržování)'} / {' '}
+                  {editModal.data.typPlatby === 'karta' ? 'DA 221000 (Bankovní účty)' :
+                   editModal.data.typPlatby === 'hotove' ? 'DA 211000 (Pokladna)' :
+                   'DA 321000 (Dodavatelé)'}
+                </p>
+              </div>
+            </div>
+
+            {/* Tlačítka */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={saveEditedData}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                ✓ Uložit a přepočítat účtování
+              </button>
+              <button
+                onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                ✕ Zrušit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
