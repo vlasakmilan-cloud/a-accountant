@@ -187,7 +187,7 @@ function generateIntelligentFallback(content: string, fileName: string) {
 
   // Detekce dodavatele
   const dodavatelMatch = content.match(/dodavatel[:\s]*([^\n\r]+)/i) || 
-                        content.match/([a-záčďéěíňóřšťúůýž\s]+s\.?r\.?o\.?)/i)
+                        content.match(/([a-zA-ZáčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ\s]+s\.?r\.?o\.?)/i)
   if (dodavatelMatch) {
     result.dodavatel = dodavatelMatch[1]?.trim()
   }
@@ -215,4 +215,23 @@ function generateIntelligentFallback(content: string, fileName: string) {
     result.ucty = 'MD 501000 (Spotřeba materiálu) / DA 321000 (Dodavatelé)'
     result.zduvodneni = 'Detekována faktura → dodavatelé'
   } else {
-    result.ucty = 'MD 501000 (Spot
+    result.ucty = 'MD 501000 (Spotřeba materiálu) / DA 221000 (Bankovní účty)'
+    result.zduvodneni = 'Výchozí účtování - zkontrolujte typ platby'
+  }
+
+  // Detekce DPH
+  if (content.includes('21%') || content.includes('DPH')) {
+    result.dph = '21% (standardní sazba)'
+  }
+
+  // Detekce popisu
+  if (contentLower.includes('hardware') || contentLower.includes('počítač') || contentLower.includes('klávesnic')) {
+    result.popis = 'Nákup IT hardware'
+  } else if (contentLower.includes('služ')) {
+    result.popis = 'Nákup služeb'
+  } else {
+    result.popis = 'Nákup materiálu/zboží'
+  }
+
+  return result
+}
