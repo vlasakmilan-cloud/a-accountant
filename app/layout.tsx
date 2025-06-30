@@ -1,13 +1,12 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'A!Accountant - AI Účetní Software',
-  description: 'Revolutionize your accounting with AI-powered automation',
+  description: 'Kompletní účetní software ovládaný umělou inteligencí',
 }
 
 export default function RootLayout({
@@ -17,11 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs">
-      <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }
