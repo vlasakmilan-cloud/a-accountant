@@ -7,11 +7,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { fileName } = body
 
-    // Since PDF processing is now done client-side with PDF.js,
+    // Since PDF processing is now done client-side with PDF.js via CDN,
     // this endpoint just returns a success response
     return NextResponse.json({
       success: true,
-      message: 'PDF processing is handled client-side with PDF.js',
+      message: 'PDF processing is handled client-side with PDF.js via CDN',
       fileName: fileName || 'unknown.pdf'
     })
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       error: 'PDF API error',
-      message: 'PDF processing is now handled in the browser'
+      message: 'PDF processing is now handled in the browser via CDN'
     }, { status: 500 })
   }
 }
