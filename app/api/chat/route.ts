@@ -1,100 +1,113 @@
+// src/app/api/ai-chat/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-const SYSTEM_PROMPT = `Tvůj hlavní úkol:
-- analyzovat faktury (vystavené i přijaté)
-- rozpoznat klíčové daňové údaje
-- navrhnout zaúčtování a kategorizaci
-- připravit podklady pro měsíční přiznání k DPH a kontrolní hlášení
-- připravit roční přiznání k dani z příjmů FO nebo PO
-- upozorňovat na jakýkoli možný rozpor s aktuální legislativou
+// Vylepšený AI prompt pro účetní analýzu
+const ACCOUNTING_SYSTEM_PROMPT = `Jsi expert na české účetnictví a daňové právo. Specializuješ se na:
 
-Nikdy nic neodesílej sám. Milan je vždy odpovědný za finální kontrolu a podání.
+🎯 ANALÝZA DOKUMENTŮ:
+1. PEČLIVĚ rozliš DODAVATELE vs ODBĚRATELE:
+   - DODAVATEL = ten, kdo fakturuje/vystavuje doklad (většinou nahoře dokumentu)
+   - ODBĚRATEL = ten, kdo platí/příjemce faktury (většinou dole nebo v rámečku)
+   
+2. ČÍSELNÉ HODNOTY čti EXTRA PEČLIVĚ:
+   - Kontroluj desetinné tečky a čárky
+   - 11 230,00 není 112300!
+   - Vždy ověř logiku částky (hosting za 112 tisíc je nereálný)
 
-Jsi daňový a účetní poradce Milana. Pracuješ výhradně podle právního řádu České republiky (zejména zákon o dani z příjmů, zákon o DPH, daňový řád a zákon o účetnictví).
+3. LOGICKÁ KONTROLA:
+   - Zkontroluj, jestli dodavatel a služba dává smysl (ACTIVE 24 = hosting ✓)
+   - Ověř rozumnost částek podle typu služby
 
-Pokud si nejsi jistý, vždy napiš: "Vyžaduje konzultaci s daňovým poradcem."
+🏢 ČESKÉ ÚČETNICTVÍ:
+- Podvojné účetnictví s MD/DA větvami
+- DPH sazby: 21% základní, 15% snížená, 10% knihy/léky
+- Účty: 1xx-5xx (aktiva), 6xx (náklady), 2xx-4xx (pasiva)
 
-Využívej tyto zdroje:
-- Zákony ČR: https://www.zakonyprolidi.cz
-- Finanční správa ČR: https://www.financnisprava.cz
-- Formuláře: https://www.mfcr.cz/cs/legislativa/danove-dokumenty
+📋 ÚČTOVÁNÍ PŘÍKLADŮ:
+- Nákup materiálu: MD 501xxx (spotřeba) / DA 321xxx (dodavatelé)
+- Služby: MD 518xxx (ostatní služby) / DA 321xxx (dodavatelé)
+- DPH: MD 343xxx (DPH na vstupu) při nákupu
 
-Vždy uveď konkrétní paragraf zákona při odpovědi.`;
+⚖️ LEGISLATIVNÍ KONTROLA:
+- Upozorni na chybějící povinné údaje
+- Kontroluj DPH sazby a nároky na odpočet
+- Varuj před rizikovými transakcemi
 
-export async function POST(req: NextRequest) {
+🗣️ KOMUNIKACE:
+- Odpovídej v češtině, profesionálně ale přátelsky
+- Dávej konkrétní příklady s čísly účtů
+- Nabízej alternativní řešení při pochybnostech`;
+
+const DOCUMENT_ANALYSIS_PROMPT = `ANALYZUJ TENTO DOKUMENT EXTRA PEČLIVĚ:
+
+🔍 KONTROLNÍ SEZNAM:
+1. KDO JE DODAVATEL? (vystavovatel faktury - obvykle nahoře)
+2. KDO JE ODBĚRATEL? (platič - obvykle dole nebo v rámečku)  
+3. ČÁSTKA - čti pomalu, kontroluj tečky/čárky
+4. DATUM a číslo dokladu
+5. POPIS služby/zboží
+6. DPH sazba a částka
+
+📝 FORMÁT ODPOVĚDI:
+Dodavatel: [SPRÁVNÝ název firmy, která VYSTAVUJE fakturu]
+Částka: [PŘESNÁ částka včetně měny - kontroluj desetinná místa!]
+Datum: [datum vystavení]
+Číslo dokladu: [číslo faktury/dokladu]
+Popis: [stručný popis]
+
+AI doporučuje účtování:
+MD [číslo účtu] ([název účtu]) / DA [číslo účtu] ([název účtu])
+📊 Logika: [vysvětlení proč tento účet]
+
+⚠️ KONTROLUJ: Je dodavatel logický pro danou službu? Je částka reálná?`;
+
+export async function POST(request: NextRequest) {
   try {
-    if (!OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API klíč není nastaven' }, 
-        { status: 500 }
-      );
+    const { message, isDocumentAnalysis, documentData } = await request.json();
+
+    let prompt = message;
+    let systemPrompt = ACCOUNTING_SYSTEM_PROMPT;
+
+    // Pokud jde o analýzu dokumentu, použij speciální prompt
+    if (isDocumentAnalysis && documentData) {
+      systemPrompt = ACCOUNTING_SYSTEM_PROMPT + "\n\n" + DOCUMENT_ANALYSIS_PROMPT;
+      prompt = `ANALYZUJ TENTO DOKUMENT:
+
+${documentData}
+
+${message}`;
     }
 
-    const body = await req.json();
-    let messagesForAI;
-
-    // Podpora pro oba formáty - starý i nový
-    if (body.message) {
-      // Starý formát - jednotlivá zpráva
-      messagesForAI = [
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
         {
-          role: 'system',
-          content: SYSTEM_PROMPT
+          role: "system",
+          content: systemPrompt
         },
         {
-          role: 'user',
-          content: body.message
+          role: "user", 
+          content: prompt
         }
-      ];
-    } else if (body.messages) {
-      // Nový formát - conversation history
-      messagesForAI = [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT
-        },
-        ...body.messages
-      ];
-    } else {
-      return NextResponse.json(
-        { error: 'Zpráva nebo messages pole je povinné' }, 
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: messagesForAI,
-        temperature: 0.3,
-        max_tokens: 1000
-      }),
+      ],
+      max_tokens: 1000,
+      temperature: 0.1, // Nízká teplota pro přesnost
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
+    const aiResponse = completion.choices[0]?.message?.content || 'Omlouváme se, došlo k chybě při zpracování.';
 
-    const data = await response.json();
-    const aiMessage = data.choices[0]?.message?.content;
-
-    // Podpora pro oba formáty odpovědi
-    return NextResponse.json({ 
-      message: aiMessage,  // Starý formát
-      response: aiMessage  // Nový formát
-    });
+    return NextResponse.json({ response: aiResponse });
 
   } catch (error) {
-    console.error('Chat API error:', error);
+    console.error('AI Chat Error:', error);
     return NextResponse.json(
-      { error: 'Chyba při komunikaci s AI' }, 
+      { error: 'Chyba při komunikaci s AI' },
       { status: 500 }
     );
   }
