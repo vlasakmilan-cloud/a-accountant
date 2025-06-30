@@ -97,14 +97,21 @@ export default function AnalyzeDocumentPage() {
     }
   }
 
-  // Zpracování PDF přes API
+  // Zpracování PDF přes API (opravená verze)
   const processPDFFile = async (file: File): Promise<string> => {
     try {
       console.log('📄 Sending PDF to API for processing...')
       
-      // Převod souboru na base64 pro odeslání
+      // OPRAVA: Lepší převod souboru na base64
       const arrayBuffer = await file.arrayBuffer()
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      // Převod na base64 - TypeScript friendly způsob
+      let binary = ''
+      for (let i = 0; i < uint8Array.byteLength; i++) {
+        binary += String.fromCharCode(uint8Array[i])
+      }
+      const base64 = btoa(binary)
       
       const response = await fetch('/api/process-pdf', {
         method: 'POST',
@@ -576,7 +583,7 @@ Typ: ${file.type || 'Nerozpoznaný'}
               </div>
             </div>
 
-            {/* Zpracované soubory - same as before */}
+            {/* Zpracované soubory */}
             {files.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
