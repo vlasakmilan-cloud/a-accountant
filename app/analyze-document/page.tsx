@@ -57,7 +57,7 @@ export default function AnalyzeDocumentPage() {
     }
   }
 
-  // 100% AUTOMATICKÉ ČTENÍ VŠECH FORMÁTŮ
+  // AUTOMATICKÉ ČTENÍ VŠECH FORMÁTŮ
   const extractFileContent = async (file: File, fileIndex: number): Promise<string> => {
     console.log(`🔍 Processing file: ${file.name} (${file.type})`)
     
@@ -76,10 +76,10 @@ export default function AnalyzeDocumentPage() {
         return `CSV SOUBOR AUTOMATICKY PŘEČTEN: ${file.name}\n\nOBSAH:\n${text}`
       }
       
-      // PDF soubory - automatické čtení přes PDF.js
+      // PDF soubory - automatické čtení přes CDN
       else if (file.type === 'application/pdf') {
-        console.log('📄 Reading PDF automatically...')
-        return await extractPDFContent(file)
+        console.log('📄 Reading PDF automatically via CDN...')
+        return await extractPDFContentViaCDN(file)
       }
       
       // Obrázky - automatické OCR rozpoznávání
@@ -88,14 +88,14 @@ export default function AnalyzeDocumentPage() {
         return await extractImageContent(file, fileIndex)
       }
       
-      // Excel soubory - automatic reading
+      // Excel soubory - instrukce k převodu
       else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        return await extractExcelContent(file)
+        return generateExcelInstructions(file)
       }
       
       // Ostatní formáty
       else {
-        throw new Error(`Nepodporovaný formát: ${file.type}`)
+        return generateGenericInstructions(file)
       }
       
     } catch (error) {
@@ -104,16 +104,13 @@ export default function AnalyzeDocumentPage() {
     }
   }
 
-  // AUTOMATICKÉ ČTENÍ PDF
-  const extractPDFContent = async (file: File): Promise<string> => {
+  // AUTOMATICKÉ ČTENÍ PDF PŘES CDN
+  const extractPDFContentViaCDN = async (file: File): Promise<string> => {
     try {
-      console.log('📄 Starting automatic PDF reading...')
+      console.log('📄 Loading PDF.js from CDN...')
       
-      // Import PDF.js dynamically
-      const pdfjsLib = await import('pdfjs-dist')
-      
-      // Set worker path
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      // Dynamicky načteme PDF.js z CDN
+      const pdfjsLib = await loadPDFJS()
       
       // Convert file to array buffer
       const arrayBuffer = await file.arrayBuffer()
@@ -121,7 +118,7 @@ export default function AnalyzeDocumentPage() {
       // Load PDF
       const pdf = await pdfjsLib.getDocument({
         data: arrayBuffer,
-        verbosity: 0 // Disable warnings
+        verbosity: 0
       }).promise
       
       console.log(`📄 PDF loaded: ${pdf.numPages} pages`)
@@ -142,22 +139,101 @@ export default function AnalyzeDocumentPage() {
       }
       
       if (!fullText.trim()) {
-        throw new Error('PDF neobsahuje čitelný text')
+        // Fallback na chytrou analýzu názvu
+        return generateSmartPDFAnalysis(file)
       }
       
-      console.log('✅ PDF automatically read successfully')
+      console.log('✅ PDF automatically read via CDN')
       
       return `PDF DOKUMENT AUTOMATICKY PŘEČTEN: ${file.name}
 Počet stránek: ${pdf.numPages}
+Metoda: Automatické čtení přes PDF.js
 Datum zpracování: ${new Date().toLocaleDateString('cs-CZ')}
 
 ✅ OBSAH AUTOMATICKY EXTRAHOVÁN:
 ${fullText.trim()}`
 
     } catch (error) {
-      console.error('❌ PDF reading failed:', error)
-      throw new Error(`Chyba při automatickém čtení PDF: ${String(error)}`)
+      console.error('❌ PDF CDN reading failed:', error)
+      console.log('🔄 Falling back to smart filename analysis...')
+      
+      // Fallback na chytrou analýzu
+      return generateSmartPDFAnalysis(file)
     }
+  }
+
+  // Dynamické načtení PDF.js z CDN
+  const loadPDFJS = async (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      // Zkontrolujeme, jestli už není načteno
+      if ((window as any).pdfjsLib) {
+        resolve((window as any).pdfjsLib)
+        return
+      }
+
+      // Vytvoříme script tag pro PDF.js
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+      script.onload = () => {
+        // Set worker
+        const pdfjsLib = (window as any).pdfjsLib
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        resolve(pdfjsLib)
+      }
+      script.onerror = () => {
+        reject(new Error('Failed to load PDF.js from CDN'))
+      }
+      document.head.appendChild(script)
+    })
+  }
+
+  // Chytrá analýza PDF (fallback)
+  const generateSmartPDFAnalysis = (file: File): string => {
+    const fileName = file.name.toLowerCase()
+    const fileSize = (file.size / 1024 / 1024).toFixed(2)
+    
+    let analysis = `PDF DOKUMENT: ${file.name}
+Velikost: ${fileSize} MB
+Metoda: Chytrá analýza názvu (automatické čtení se pokusilo, ale selhalo)
+Datum zpracování: ${new Date().toLocaleDateString('cs-CZ')}
+
+🧠 POKROČILÁ CHYTRÁ ANALÝZA PDF:
+`
+
+    let detectedData: any = {}
+
+    if (fileName.includes('faktura') || fileName.includes('invoice') || fileName.includes('fakt')) {
+      detectedData.typ = "faktura_prijata"
+      detectedData.ucty = "MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)"
+      analysis += `✅ TYP: FAKTURA PŘIJATÁ (detekováno z názvu)\n`
+    } else if (fileName.includes('doklad') || fileName.includes('uctenka') || fileName.includes('paragon')) {
+      detectedData.typ = "pokladni_doklad"
+      detectedData.ucty = "MD 501000 (Spotřeba) / DA 211000 (Pokladna)"
+      analysis += `✅ TYP: POKLADNÍ DOKLAD (detekováno z názvu)\n`
+    }
+
+    const numberMatches = fileName.match(/(\d{4,})/g)
+    if (numberMatches && numberMatches.length > 0) {
+      const detectedNumber = numberMatches.reduce((a, b) => a.length > b.length ? a : b)
+      detectedData.cisloDokladu = detectedNumber
+      analysis += `📄 ČÍSLO DOKLADU: ${detectedNumber} (z názvu)\n`
+    }
+
+    analysis += `
+💡 AI DOPORUČENÉ ÚČTOVÁNÍ:
+${detectedData.ucty || 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'}
+
+⚡ RYCHLÉ ŘEŠENÍ PRO 100% AUTOMATIZACI:
+1. Otevřete PDF v prohlížeči (dvojklik)
+2. Označte veškerý text (Ctrl+A)
+3. Zkopírujte (Ctrl+C)
+4. Vytvořte textový soubor (.txt)
+5. Vložte obsah (Ctrl+V) a uložte
+6. Nahrajte .txt soubor = okamžitá 100% AI analýza!
+
+🎯 Chytrá analýza poskytla základní detekci, pro kompletní automatizaci převeďte na text.`
+
+    return analysis
   }
 
   // AUTOMATICKÉ OCR ROZPOZNÁVÁNÍ OBRÁZKŮ
@@ -208,14 +284,29 @@ ${text.trim()}`
     }
   }
 
-  // AUTOMATICKÉ ČTENÍ EXCEL
-  const extractExcelContent = async (file: File): Promise<string> => {
-    try {
-      // For now, return instructions - will implement SheetJS later
-      throw new Error('Excel automatické čtení bude implementováno v příští verzi. Prozatím převeďte na CSV.')
-    } catch (error) {
-      throw error
-    }
+  // Instrukce pro Excel
+  const generateExcelInstructions = (file: File): string => {
+    return `EXCEL SOUBOR: ${file.name}
+
+📊 RYCHLÉ ŘEŠENÍ PRO AUTOMATIZACI:
+1. Otevřete v Excelu/Google Sheets
+2. Uložte jako CSV (Soubor → Uložit jako → CSV)
+3. Nahrajte CSV soubor = automatická AI analýza!
+
+🚀 CSV = plná automatizace bez copy-paste`
+  }
+
+  // Obecné instrukce
+  const generateGenericInstructions = (file: File): string => {
+    return `SOUBOR: ${file.name}
+Typ: ${file.type || 'Nerozpoznaný'}
+
+💡 ŘEŠENÍ PRO AUTOMATIZACI:
+Převeďte na podporovaný formát:
+• Text (.txt) = okamžitá automatika
+• CSV = okamžitá automatika
+• PDF = pokus o automatiku + fallback
+• Obrázky = automatické OCR`
   }
 
   // AI analýza dokumentu
@@ -353,9 +444,12 @@ ${text.trim()}`
         if (file?.file.type.startsWith('image/') && file.ocrProgress) {
           return `OCR rozpoznávání... ${file.ocrProgress}%`
         }
+        if (file?.file.type === 'application/pdf') {
+          return 'Čtu PDF automaticky...'
+        }
         return 'AI analyzuje automaticky...'
       case 'completed': return 'Automaticky dokončeno'
-      case 'error': return 'Chyba'
+      case 'error': return 'Chyba automatiky'
       default: return 'Zpracovává se'
     }
   }
@@ -421,8 +515,8 @@ ${text.trim()}`
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-6 shadow-lg">
-          <h2 className="text-2xl font-bold">🚀 100% Automatická analýza všech formátů</h2>
-          <p className="text-green-100 mt-2">PDF automaticky • OCR obrázků • Text soubory • Žádné copy-paste!</p>
+          <h2 className="text-2xl font-bold">🚀 Automatická analýza dokumentů</h2>
+          <p className="text-green-100 mt-2">OCR obrázků • PDF čtení • Text soubory • Maximální automatizace</p>
         </div>
 
         {/* Obsah stránky */}
@@ -436,17 +530,7 @@ ${text.trim()}`
                   <span className="text-green-500 text-xl mr-3">✅</span>
                   <div>
                     <h3 className="font-semibold text-green-800">Text soubory</h3>
-                    <p className="text-green-600 text-sm">TXT, CSV - automaticky</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <span className="text-green-500 text-xl mr-3">🚀</span>
-                  <div>
-                    <h3 className="font-semibold text-green-800">PDF soubory</h3>
-                    <p className="text-green-600 text-sm">Automatické čtení!</p>
+                    <p className="text-green-600 text-sm">100% automaticky</p>
                   </div>
                 </div>
               </div>
@@ -456,17 +540,27 @@ ${text.trim()}`
                   <span className="text-green-500 text-xl mr-3">🔍</span>
                   <div>
                     <h3 className="font-semibold text-green-800">Obrázky</h3>
-                    <p className="text-green-600 text-sm">Automatické OCR!</p>
+                    <p className="text-green-600 text-sm">Automatické OCR</p>
                   </div>
                 </div>
               </div>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center">
-                  <span className="text-blue-500 text-xl mr-3">📊</span>
+                  <span className="text-blue-500 text-xl mr-3">🚀</span>
                   <div>
-                    <h3 className="font-semibold text-blue-800">Excel</h3>
-                    <p className="text-blue-600 text-sm">Převeďte na CSV</p>
+                    <h3 className="font-semibold text-blue-800">PDF soubory</h3>
+                    <p className="text-blue-600 text-sm">Pokus + fallback</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <span className="text-yellow-500 text-xl mr-3">📊</span>
+                  <div>
+                    <h3 className="font-semibold text-yellow-800">Excel</h3>
+                    <p className="text-yellow-600 text-sm">Převeďte na CSV</p>
                   </div>
                 </div>
               </div>
@@ -475,7 +569,7 @@ ${text.trim()}`
             {/* Upload zona */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                🚀 100% Automatické čtení všech formátů
+                🚀 Automatická analýza dokumentů
               </h3>
 
               <div
@@ -491,16 +585,16 @@ ${text.trim()}`
               >
                 <div className="text-6xl mb-4">🎯</div>
                 <p className="text-lg font-medium text-gray-600">
-                  Nahrajte jakýkoli dokument - vše se přečte automaticky
+                  Nahrajte dokumenty - automatická analýza
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  🚀 PDF: Automatické čtení obsahu<br />
                   🔍 Obrázky: Automatické OCR rozpoznávání<br />
-                  ✅ Text: Okamžitá analýza
+                  🚀 PDF: Pokus o automatiku + chytrý fallback<br />
+                  ✅ Text: 100% automatická analýza
                 </p>
                 
                 <button className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                  🚀 100% Automaticky
+                  🚀 Automatická analýza
                 </button>
               </div>
 
@@ -514,33 +608,30 @@ ${text.trim()}`
               />
             </div>
 
-            {/* Skutečný stav */}
+            {/* Stav automatizace */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6 border border-green-200">
               <div className="flex items-center mb-3">
-                <span className="text-green-500 text-2xl mr-3">✅</span>
+                <span className="text-green-500 text-2xl mr-3">🎯</span>
                 <h3 className="text-lg font-semibold text-green-800">Skutečný stav automatizace</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div className="bg-white p-3 rounded-lg border border-green-200">
-                  <strong className="text-green-600">✅ PLNĚ AUTOMATICKÉ</strong>
-                  <br />• Text soubory: 100% analýza
-                  <br />• PDF soubory: Automatické čtení
+                  <strong className="text-green-600">✅ 100% AUTOMATICKÉ</strong>
+                  <br />• Text soubory (.txt, .csv)
                   <br />• Obrázky: OCR rozpoznávání
-                  <br />• AI účetní doporučení
-                </div>
-                <div className="bg-white p-3 rounded-lg border border-green-200">
-                  <strong className="text-green-600">🎯 ŽÁDNÁ RUČNÍ PRÁCE</strong>
-                  <br />• Bez copy-paste
-                  <br />• Bez přepisování
-                  <br />• Jen nahrajte soubor
-                  <br />• AI udělá zbytek
+                  <br />• Žádná ruční práce
                 </div>
                 <div className="bg-white p-3 rounded-lg border border-blue-200">
-                  <strong className="text-blue-600">📊 VÝJIMKA: EXCEL</strong>
-                  <br />• Prozatím převeďte na CSV
+                  <strong className="text-blue-600">🚀 PDF: POKUS + FALLBACK</strong>
+                  <br />• Pokus o automatické čtení
+                  <br />• Při selhání: chytrá analýza
+                  <br />• + instrukce k převodu na text
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-yellow-200">
+                  <strong className="text-yellow-600">📊 EXCEL: CSV PŘEVOD</strong>
                   <br />• Uložte jako CSV v Excelu
                   <br />• Nahrajte CSV = automatika
-                  <br />• Plná Excel podpora brzy
+                  <br />• Pracujeme na přímé podpoře
                 </div>
               </div>
             </div>
@@ -549,7 +640,7 @@ ${text.trim()}`
             {files.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  📄 Automaticky analyzované dokumenty ({files.length})
+                  📄 Analyzované dokumenty ({files.length})
                 </h3>
                 
                 <div className="space-y-6">
@@ -579,9 +670,16 @@ ${text.trim()}`
                                   {Math.round(file.confidence * 100)}% jistota
                                 </span>
                               )}
-                              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                                🚀 AUTOMATICKY
-                              </span>
+                              {(file.file.type.startsWith('image/') || file.file.type.startsWith('text/')) && (
+                                <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                                  🚀 AUTO
+                                </span>
+                              )}
+                              {file.file.type === 'application/pdf' && (
+                                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                  🎯 POKUS+FALLBACK
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -593,11 +691,11 @@ ${text.trim()}`
                             <p className="text-sm font-medium text-gray-700">
                               {getStatusText(file.status, file)}
                             </p>
-                            {file.status === 'analyzing' && (
+                            {file.status === 'analyzing' && file.ocrProgress && (
                               <div className="w-32 bg-gray-200 rounded-full h-2 mt-1">
                                 <div 
                                   className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                                  style={{ width: `${file.ocrProgress || 30}%` }}
+                                  style={{ width: `${file.ocrProgress}%` }}
                                 ></div>
                               </div>
                             )}
@@ -609,7 +707,7 @@ ${text.trim()}`
                       {file.status === 'error' && file.errorMessage && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                           <p className="text-red-800 text-sm">
-                            <strong>Chyba automatického čtení:</strong> {file.errorMessage}
+                            <strong>Chyba automatiky:</strong> {file.errorMessage}
                           </p>
                         </div>
                       )}
@@ -619,7 +717,7 @@ ${text.trim()}`
                         <div className="mt-4 p-4 bg-white rounded-lg border">
                           <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
                             <span className="mr-2">🎯</span>
-                            Automatická AI analýza:
+                            AI analýza výsledek:
                           </h4>
                           
                           {/* Extrahované údaje */}
@@ -660,7 +758,7 @@ ${text.trim()}`
                           {file.aiSuggestion && (
                             <div className="mb-4 p-3 bg-green-50 rounded-lg">
                               <p className="text-sm">
-                                <span className="font-medium text-green-800">🎯 AI automaticky doporučuje účtování:</span>
+                                <span className="font-medium text-green-800">🎯 AI doporučuje účtování:</span>
                                 <br />
                                 <span className="text-green-700 font-mono">{file.aiSuggestion}</span>
                               </p>
@@ -675,7 +773,7 @@ ${text.trim()}`
                           {/* Akční tlačítka */}
                           <div className="flex gap-2 flex-wrap">
                             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors">
-                              ✓ Schválit automatické účtování
+                              ✓ Schválit účtování
                             </button>
                             <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm transition-colors">
                               ✏️ Upravit údaje
@@ -690,7 +788,7 @@ ${text.trim()}`
                                   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
                                   modal.innerHTML = `
                                     <div class="bg-white p-6 rounded-lg max-w-4xl max-h-96 overflow-y-auto">
-                                      <h3 class="font-bold mb-4">Automaticky přečtený obsah: ${file.file.name}</h3>
+                                      <h3 class="font-bold mb-4">Obsah: ${file.file.name}</h3>
                                       <pre class="text-sm bg-gray-100 p-4 rounded whitespace-pre-wrap">${file.fileContent}</pre>
                                       <button onclick="this.parentElement.parentElement.remove()" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded">Zavřít</button>
                                     </div>
@@ -699,7 +797,7 @@ ${text.trim()}`
                                 }}
                                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm transition-colors"
                               >
-                                👁️ Zobrazit přečtený text
+                                👁️ Zobrazit obsah
                               </button>
                             )}
                           </div>
@@ -715,27 +813,27 @@ ${text.trim()}`
             {files.length === 0 && (
               <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 text-center border border-green-200">
                 <div className="text-4xl mb-4">🚀</div>
-                <h3 className="text-lg font-semibold text-green-800 mb-2">100% Automatické čtení připraveno!</h3>
+                <h3 className="text-lg font-semibold text-green-800 mb-2">Automatická analýza připravena!</h3>
                 <p className="text-green-700 mb-4">
-                  Všechno se čte automaticky - žádné copy-paste, žádná ruční práce:
+                  Maximální automatizace pro všechny formáty:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div className="bg-white p-3 rounded-lg border border-green-200">
-                    <strong className="text-green-600">🚀 PDF soubory</strong>
-                    <br />Automatické čtení obsahu
+                    <strong className="text-green-600">✅ Text soubory</strong>
+                    <br />100% automatická analýza
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-green-200">
                     <strong className="text-green-600">🔍 Obrázky faktury</strong>
                     <br />Automatické OCR rozpoznávání
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-green-200">
-                    <strong className="text-green-600">✅ Text soubory</strong>
-                    <br />Okamžitá analýza
+                  <div className="bg-white p-3 rounded-lg border border-blue-200">
+                    <strong className="text-blue-600">🚀 PDF soubory</strong>
+                    <br />Pokus o automatiku + chytrý fallback
                   </div>
                 </div>
                 <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-green-800 text-sm font-medium">
-                    🎯 Vyzkoušejte: Nahrajte PDF fakturu nebo obrázek - automaticky se přečte a analyzuje!
+                    🎯 Vyzkoušejte: Obrázek faktury = automatické OCR rozpoznávání!
                   </p>
                 </div>
               </div>
