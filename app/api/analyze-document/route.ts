@@ -149,7 +149,7 @@ ODPOVĚZ POUZE JSON - žádný další text!`
       popis: "Ruční zpracování nutné",
       ucty: "MD 518000 / DA 321000",
       confidence: 0.1,
-      zduvodneni: `Systémová chyba: ${error.message}`
+      zduvodneni: `Systémová chyba: ${String(error)}`
     }, { status: 500 })
   }
 }
