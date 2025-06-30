@@ -132,7 +132,7 @@ AI i z těchto základních informací dokáže navrhnout účetní postup.`
       
     } catch (error) {
       console.error('❌ File processing error:', error)
-      return `Chyba při zpracování souboru: ${error}`
+      return `Chyba při zpracování souboru: ${String(error)}`
     }
   }
 
@@ -179,7 +179,7 @@ AI i z těchto základních informací dokáže navrhnout účetní postup.`
         popis: "Vyžaduje ruční kontrolu",
         ucty: "MD 518000 / DA 321000",
         confidence: 0.2,
-        zduvodneni: `Chyba při AI analýze: ${error.message}`
+        zduvodneni: `Chyba při AI analýze: ${String(error)}`
       }
     }
   }
