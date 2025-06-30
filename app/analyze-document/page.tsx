@@ -54,7 +54,7 @@ export default function AnalyzeDocumentPage() {
     }
   }
 
-  // Základní extrakce textu bez OCR knihoven
+  // Extrakce obsahu souborů
   const extractFileContent = async (file: File): Promise<string> => {
     console.log(`🔍 Processing file: ${file.name} (${file.type})`)
     
@@ -66,23 +66,25 @@ export default function AnalyzeDocumentPage() {
         return text
       }
       
-      // PDF soubory - bez OCR knihovny můžeme jen základní info
+      // PDF soubory - bez OCR knihovny jen základní info
       else if (file.type === 'application/pdf') {
-        console.log('📄 PDF detected - OCR libraries needed for full extraction')
+        console.log('📄 PDF detected - basic info extraction')
         return `PDF soubor: ${file.name}
 Velikost: ${(file.size / 1024 / 1024).toFixed(2)} MB
 Datum nahrání: ${new Date().toLocaleDateString('cs-CZ')}
 
 ⚠️ Pro plné čtení PDF obsahu je potřeba implementovat OCR knihovny.
 Zatím můžete:
-1. Konvertovat PDF na text soubor
-2. Přidat údaje ručně
-3. Nebo instalovat OCR knihovny (pdfjs-dist, tesseract.js)`
+1. Konvertovat PDF na text soubor  
+2. Přidat údaje ručně do textového pole
+3. Nebo PDF exportovat jako text a nahrát znovu
+
+AI dokáže i z těchto základních informací odhadnout typ dokumentu a navrhnout účtování.`
       }
       
-      // Obrázky - bez OCR knihovny nemůžeme číst
+      // Obrázky - bez OCR knihovny jen metadata
       else if (file.type.startsWith('image/')) {
-        console.log('🖼️ Image detected - OCR libraries needed')
+        console.log('🖼️ Image detected - metadata extraction')
         return `Obrázek: ${file.name}
 Typ: ${file.type}
 Velikost: ${(file.size / 1024 / 1024).toFixed(2)} MB
@@ -90,9 +92,11 @@ Datum nahrání: ${new Date().toLocaleDateString('cs-CZ')}
 
 ⚠️ Pro čtení textu z obrázků je potřeba implementovat OCR.
 Zatím můžete:
-1. Přepsat údaje ručně
-2. Konvertovat obrázek na text
-3. Nebo instalovat OCR knihovny (tesseract.js)`
+1. Přepsat údaje ručně do AI chatu
+2. Konvertovat obrázek na text pomocí online OCR
+3. Nebo vyfotit text a přepsat klíčové údaje
+
+AI i z názvu souboru dokáže odhadnout typ dokumentu.`
       }
       
       // Excel/Office soubory
@@ -104,22 +108,26 @@ Datum nahrání: ${new Date().toLocaleDateString('cs-CZ')}
 ⚠️ Pro čtení Excel souborů je potřeba implementovat SheetJS knihovnu.
 Zatím můžete:
 1. Exportovat Excel do CSV formátu
-2. Kopírovat data ručně
-3. Nebo instalovat SheetJS knihovnu`
+2. Zkopírovat data a vložit do textového souboru
+3. Nebo použít "Uložit jako" → Text (CSV)
+
+AI pak dokáže CSV soubor plně analyzovat.`
       }
       
-      // Neznámé typy
+      // Neznámé typy souborů
       else {
         return `Soubor: ${file.name}
 Typ: ${file.type}
 Velikost: ${(file.size / 1024 / 1024).toFixed(2)} MB
-Status: Nepodporovaný typ souboru pro analýzu
+Status: Nepodporovaný typ pro přímou analýzu
 
-Podporované formáty:
-- Text soubory (.txt, .csv)
-- PDF (s OCR knihovnami)  
-- Obrázky (s OCR knihovnami)
-- Excel (s SheetJS knihovnou)`
+Podporované formáty pro plnou analýzu:
+- Text soubory (.txt, .csv) ✅
+- PDF soubory (s OCR knihovnami) ⚠️
+- Obrázky (s OCR knihovnami) ⚠️  
+- Excel soubory (s SheetJS knihovnou) ⚠️
+
+AI i z těchto základních informací dokáže navrhnout účetní postup.`
       }
       
     } catch (error) {
@@ -128,194 +136,72 @@ Podporované formáty:
     }
   }
 
-  const getAccountingForType = (type: string): string => {
-    switch (type) {
-      case 'faktura_prijata': return 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
-      case 'faktura_vystavena': return 'MD 311000 (Odběratelé) / DA 601000 (Tržby za služby)'
-      case 'pokladni_doklad': return 'MD 501000 (Spotřeba materiálu) / DA 211000 (Pokladna)'
-      case 'dodaci_list': return 'MD 132000 (Zboží na skladě) / DA 321000 (Dodavatelé)'
-      case 'vratka': return 'MD 321000 (Dodavatelé) / DA 132000 (Zboží na skladě)'
-      case 'banka_vypis': return 'MD 221000 (Bankovní účty) / DA dle účelu platby'
-      default: return 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
-    }
-  }
-
+  // AI analýza dokumentu
   const analyzeDocument = async (fileContent: string, fileName: string): Promise<any> => {
     try {
-      console.log('🤖 Sending to AI for analysis...')
+      console.log('🤖 Starting AI analysis...')
+      console.log('📝 Content length:', fileContent.length)
+      console.log('📝 Filename:', fileName)
       
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/analyze-document', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: `ÚKOL: Analyzuj tento obsah souboru a extrahuj účetní údaje pokud jsou dostupné.
-
-NÁZEV SOUBORU: ${fileName}
-
-OBSAH:
-${fileContent}
-
-ODPOVĚZ POUZE JSON:
-{
-  "typ": "faktura_prijata",
-  "dodavatel": "název pokud je v textu",
-  "castka": "částka pokud je v textu",
-  "datum": "datum pokud je v textu",
-  "cisloDokladu": "číslo pokud je v textu",
-  "popis": "popis pokud je v textu",
-  "ucty": "MD 518000 / DA 321000",
-  "confidence": 0.8,
-  "zduvodneni": "krátké zdůvodnění"
-}
-
-PRAVIDLA:
-1. Pokud text obsahuje účetní údaje, extrahuj je
-2. Pokud ne, navrhni typ dokumentu podle názvu souboru
-3. Vždy navrhni konkrétní MD/DA účty
-4. Confidence podle dostupnosti údajů (0.1-1.0)
-
-VRAŤ POUZE JSON!`
-          }]
+          fileContent: fileContent,
+          fileName: fileName
         })
       })
 
-      const data = await response.json()
-      const aiResponse = data.response || data.message || ''
-      
-      console.log('🤖 AI Response:', aiResponse)
-      
-      let parsedResult = null
-      
-      // Pokus o JSON parsing
-      try {
-        parsedResult = JSON.parse(aiResponse)
-        console.log('✅ JSON parsing úspěšný')
-      } catch (e) {
-        console.log('⚠️ JSON parsing failed, trying extraction...')
-        
-        // Pokus o nalezení JSON v textu
-        try {
-          const jsonMatch = aiResponse.match(/\{[\s\S]*?\}/g)
-          if (jsonMatch && jsonMatch.length > 0) {
-            parsedResult = JSON.parse(jsonMatch[0])
-            console.log('✅ JSON extraction úspěšný')
-          }
-        } catch (e2) {
-          console.log('⚠️ JSON extraction failed, using manual analysis...')
-          
-          // Manuální analýza obsahu
-          const result: any = { confidence: 0.4 }
-          
-          // Analýza typu podle názvu souboru a obsahu
-          const lowerContent = fileContent.toLowerCase()
-          const lowerFileName = fileName.toLowerCase()
-          
-          if (lowerContent.includes('faktura') || lowerFileName.includes('faktura')) {
-            result.typ = 'faktura_prijata'
-            result.ucty = 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
-          } else if (lowerContent.includes('doklad') || lowerContent.includes('účtenka')) {
-            result.typ = 'pokladni_doklad'
-            result.ucty = 'MD 501000 (Spotřeba) / DA 211000 (Pokladna)'
-          } else if (lowerContent.includes('výpis') || lowerFileName.includes('bank')) {
-            result.typ = 'banka_vypis'
-            result.ucty = 'MD 221000 (Bankovní účty) / DA dle účelu'
-          } else {
-            result.typ = 'faktura_prijata' // default
-            result.ucty = 'MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)'
-          }
-          
-          // Hledání částky v textu
-          const amountMatches = fileContent.match(/(\d+[\s,\.]*\d*)\s*(Kč|CZK|czk)/gi)
-          if (amountMatches && amountMatches.length > 0) {
-            const amounts = amountMatches.map(m => {
-              const num = parseFloat(m.replace(/[^\d,\.]/g, '').replace(',', '.'))
-              return { text: m.trim(), value: num }
-            }).filter(a => !isNaN(a.value))
-            
-            if (amounts.length > 0) {
-              const maxAmount = amounts.reduce((max, curr) => curr.value > max.value ? curr : max)
-              result.castka = maxAmount.text
-              result.confidence = 0.6 // Vyšší confidence pokud najdeme částku
-            }
-          }
-          
-          // Hledání data
-          const dateMatches = fileContent.match(/(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{4})/g)
-          if (dateMatches && dateMatches.length > 0) {
-            result.datum = dateMatches[0]
-            result.confidence = Math.min(result.confidence + 0.1, 1.0)
-          }
-          
-          // Hledání názvu firmy
-          const lines = fileContent.split('\n')
-          for (const line of lines) {
-            if ((line.includes('s.r.o') || line.includes('a.s.') || line.includes('spol.')) && line.length < 100) {
-              result.dodavatel = line.trim()
-              result.confidence = Math.min(result.confidence + 0.1, 1.0)
-              break
-            }
-          }
-          
-          // Doplnění výchozích hodnot
-          result.dodavatel = result.dodavatel || `Analyzováno ze souboru ${fileName}`
-          result.popis = result.popis || "Extrahováno z nahrané ho obsahu"
-          result.cisloDokladu = result.cisloDokladu || "Viz obsah souboru"
-          result.zduvodneni = "Automatická analýza obsahu souboru"
-          
-          parsedResult = result
-        }
+      console.log('📥 Response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ API Error Response:', errorText)
+        throw new Error(`API Error: ${response.status} - ${errorText}`)
       }
 
-      // Fallback pokud vše selže
-      if (!parsedResult) {
-        parsedResult = {
-          typ: "faktura_prijata",
-          dodavatel: `Soubor: ${fileName}`,
-          castka: "Nepodařilo se extrahovat",
-          datum: new Date().toLocaleDateString('cs-CZ'),
-          cisloDokladu: "Viz soubor",
-          popis: "Ruční kontrola potřeba",
-          ucty: "MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)",
-          confidence: 0.3,
-          zduvodneni: "Základní analýza bez OCR knihoven"
-        }
-      }
-
-      // Oprava účtování pokud AI vrátilo obecnou frázi
-      if (parsedResult.ucty && parsedResult.ucty.includes('konzultaci')) {
-        parsedResult.ucty = getAccountingForType(parsedResult.typ)
-        parsedResult.zduvodneni = (parsedResult.zduvodneni || '') + ' | Účtování automaticky opraveno'
-      }
-
-      console.log('🎯 Finální výsledek analýzy:', parsedResult)
-      return parsedResult
+      const analysisResult = await response.json()
+      console.log('🎯 Analysis result:', analysisResult)
+      
+      return analysisResult
 
     } catch (error) {
       console.error('❌ AI analysis error:', error)
+      
+      // Fallback při chybě
       return {
         typ: "faktura_prijata",
-        dodavatel: "Chyba při analýze",
+        dodavatel: `Chyba analýzy - ${fileName}`,
         castka: "Chyba při analýze",
         datum: new Date().toLocaleDateString('cs-CZ'),
         popis: "Vyžaduje ruční kontrolu",
-        ucty: "MD 518000 (Ostatní služby) / DA 321000 (Dodavatelé)",
+        ucty: "MD 518000 / DA 321000",
         confidence: 0.2,
-        zduvodneni: "Chyba při AI analýze"
+        zduvodneni: `Chyba při AI analýze: ${error.message}`
       }
     }
   }
 
+  // Hlavní funkce pro zpracování souborů
   const handleFiles = async (newFiles: File[]) => {
+    console.log('📁 Handling files:', newFiles.length)
+    
     const validFiles = newFiles.filter(file => {
-      // Přijmeme všechny soubory, ale upozorníme na omezenou podporu
-      return file.size <= 50 * 1024 * 1024 // Max 50MB
+      console.log(`📄 File: ${file.name}, Type: ${file.type}, Size: ${file.size}`)
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`Soubor ${file.name} je příliš velký (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum je 50 MB.`)
+        return false
+      }
+      return true
     })
 
+    console.log('✅ Valid files:', validFiles.length)
+
     for (const file of validFiles) {
+      console.log(`🔄 Processing: ${file.name}`)
+      
       const preview = file.type.includes('image') ? URL.createObjectURL(file) : ''
       const uploadedFile: UploadedFile = {
         file,
@@ -326,13 +212,19 @@ VRAŤ POUZE JSON!`
       setFiles(prev => [...prev, uploadedFile])
 
       try {
+        console.log('📖 Extracting content...')
+        
         // Extrakce obsahu
         const fileContent = await extractFileContent(file)
+        console.log('📄 Extracted content length:', fileContent.length)
+        console.log('📄 Content preview:', fileContent.substring(0, 200) + '...')
 
         setFiles(prev => prev.map(f => 
           f.file === file ? { ...f, status: 'analyzing', fileContent } : f
         ))
 
+        console.log('🤖 Starting AI analysis...')
+        
         // AI analýza
         const analysisResult = await analyzeDocument(fileContent, file.name)
 
@@ -358,8 +250,10 @@ VRAŤ POUZE JSON!`
           } : f
         ))
 
+        console.log('✅ File processing completed for:', file.name)
+
       } catch (error) {
-        console.error('Processing error:', error)
+        console.error('❌ Processing error for', file.name, ':', error)
         setFiles(prev => prev.map(f => 
           f.file === file ? { ...f, status: 'error' } : f
         ))
@@ -367,6 +261,7 @@ VRAŤ POUZE JSON!`
     }
   }
 
+  // Pomocné funkce pro UI
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'uploading': return '⬆️'
@@ -413,6 +308,7 @@ VRAŤ POUZE JSON!`
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Levý navigační panel */}
       <div className="w-64 bg-blue-800 text-white p-6">
         <div className="mb-8">
           <h1 className="text-xl font-bold">A!Accountant</h1>
@@ -430,11 +326,7 @@ VRAŤ POUZE JSON!`
           </Link>
           <div className="flex items-center p-3 rounded-lg bg-blue-700 text-white">
             <span className="mr-3">📄</span>
-            Dokumenty
-          </div>
-          <div className="flex items-center p-3 rounded-lg bg-blue-700 text-white">
-            <span className="mr-3">📎</span>
-            Nahrát doklad
+            Analýza dokumentů
           </div>
           <div className="flex items-center p-3 rounded-lg hover:bg-blue-700 text-blue-200 hover:text-white transition-colors cursor-pointer">
             <span className="mr-3">🕐</span>
@@ -447,16 +339,19 @@ VRAŤ POUZE JSON!`
         </nav>
       </div>
 
+      {/* Hlavní obsah */}
       <div className="flex-1 flex flex-col">
+        {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6 shadow-lg">
           <h2 className="text-2xl font-bold">📁 Analýza dokumentů</h2>
-          <p className="text-purple-100 mt-2">AI analýza obsahu s podporou pro textové formáty</p>
+          <p className="text-purple-100 mt-2">AI analýza obsahu s podporou pro všechny formáty</p>
         </div>
 
+        {/* Obsah stránky */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-6xl mx-auto">
             
-            {/* Feature Status */}
+            {/* Status různých formátů */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center">
@@ -473,7 +368,7 @@ VRAŤ POUZE JSON!`
                   <span className="text-yellow-500 text-xl mr-3">⚠️</span>
                   <div>
                     <h3 className="font-semibold text-yellow-800">PDF & Obrázky</h3>
-                    <p className="text-yellow-600 text-sm">Omezená podpora - potřeba OCR</p>
+                    <p className="text-yellow-600 text-sm">Základní analýza - potřeba OCR</p>
                   </div>
                 </div>
               </div>
@@ -489,6 +384,7 @@ VRAŤ POUZE JSON!`
               </div>
             </div>
             
+            {/* Upload zona */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 📁 Nahrát účetní doklady
@@ -510,7 +406,7 @@ VRAŤ POUZE JSON!`
                   Přetáhněte dokumenty zde nebo klikněte pro výběr
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Všechny formáty přijímány - AI analyzuje dostupný obsah
+                  Podporované formáty: TXT, CSV, PDF, JPG, PNG, XLSX
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
                   💡 Pro nejlepší výsledky použijte textové soubory nebo CSV
@@ -531,15 +427,17 @@ VRAŤ POUZE JSON!`
               />
             </div>
 
+            {/* Zpracované soubory */}
             {files.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Zpracované dokumenty ({files.length})
+                  📄 Zpracované dokumenty ({files.length})
                 </h3>
                 
                 <div className="space-y-6">
                   {files.map((file, index) => (
                     <div key={index} className="border rounded-lg p-6 bg-gray-50">
+                      {/* Header souboru */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center">
                           <div className="text-2xl mr-3">
@@ -567,6 +465,7 @@ VRAŤ POUZE JSON!`
                           </div>
                         </div>
                         
+                        {/* Status */}
                         <div className="flex items-center">
                           <span className="mr-2 text-2xl">{getStatusIcon(file.status)}</span>
                           <div className="text-right">
@@ -582,13 +481,15 @@ VRAŤ POUZE JSON!`
                         </div>
                       </div>
 
+                      {/* AI analýza výsledky */}
                       {file.extractedData && file.status === 'completed' && (
                         <div className="mt-4 p-4 bg-white rounded-lg border">
                           <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
                             <span className="mr-2">🤖</span>
-                            AI analýza:
+                            AI analýza výsledků:
                           </h4>
                           
+                          {/* Extrahované údaje */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                             {file.extractedData.typ && (
                               <div>
@@ -628,6 +529,7 @@ VRAŤ POUZE JSON!`
                             )}
                           </div>
                           
+                          {/* AI doporučení účtování */}
                           {file.aiSuggestion && (
                             <div className="mb-4 p-3 bg-purple-50 rounded-lg">
                               <p className="text-sm">
@@ -643,6 +545,7 @@ VRAŤ POUZE JSON!`
                             </div>
                           )}
 
+                          {/* Akční tlačítka */}
                           <div className="flex gap-2 flex-wrap">
                             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors">
                               ✓ Schválit a zaúčtovat
@@ -660,7 +563,7 @@ VRAŤ POUZE JSON!`
                                   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
                                   modal.innerHTML = `
                                     <div class="bg-white p-6 rounded-lg max-w-4xl max-h-96 overflow-y-auto">
-                                      <h3 class="font-bold mb-4">Obsah souboru:</h3>
+                                      <h3 class="font-bold mb-4">Obsah souboru: ${file.file.name}</h3>
                                       <pre class="text-sm bg-gray-100 p-4 rounded whitespace-pre-wrap">${file.fileContent}</pre>
                                       <button onclick="this.parentElement.parentElement.remove()" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded">Zavřít</button>
                                     </div>
@@ -681,25 +584,26 @@ VRAŤ POUZE JSON!`
               </div>
             )}
 
+            {/* Informace pro prázdný stav */}
             {files.length === 0 && (
               <div className="bg-blue-50 rounded-xl p-6 text-center">
                 <div className="text-4xl mb-4">🚀</div>
-                <h3 className="text-lg font-semibold text-blue-800 mb-2">Systém je připraven!</h3>
+                <h3 className="text-lg font-semibold text-blue-800 mb-2">Systém připraven k analýze!</h3>
                 <p className="text-blue-700 mb-4">
-                  Aplikace funguje bez OCR knihoven. Pro nejlepší výsledky nahrajte:
+                  Nahrajte libovolný soubor a AI ho automaticky analyzuje:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div className="bg-white p-3 rounded-lg border">
                     <strong className="text-green-600">✅ Text soubory</strong>
-                    <br />TXT, CSV s účetními údaji
+                    <br />TXT, CSV - plná analýza všech údajů
                   </div>
                   <div className="bg-white p-3 rounded-lg border">
-                    <strong className="text-yellow-600">⚠️ PDF soubory</strong>
-                    <br />Základní info + AI odhad
+                    <strong className="text-yellow-600">⚠️ PDF & Obrázky</strong>
+                    <br />Základní analýza + AI klasifikace
                   </div>
                   <div className="bg-white p-3 rounded-lg border">
-                    <strong className="text-blue-600">🔮 Obrázky</strong>
-                    <br />Název + AI klasifikace
+                    <strong className="text-blue-600">🤖 Všechny formáty</strong>
+                    <br />AI navrhne účetní zacházení
                   </div>
                 </div>
               </div>
