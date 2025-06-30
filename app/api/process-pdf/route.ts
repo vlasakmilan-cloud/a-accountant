@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import pdf from 'pdf-parse'
 
 export async function POST(request: NextRequest) {
+  let fileName = 'unknown.pdf' // Default value for error handling
+  
   try {
     console.log('🚀 Starting PDF processing API...')
     
     const body = await request.json()
-    const { fileName, fileData, fileSize } = body
+    const { fileName: bodyFileName, fileData, fileSize } = body
+    
+    // Set fileName for use throughout the function
+    fileName = bodyFileName || 'unknown.pdf'
 
     console.log(`📄 Processing PDF: ${fileName} (${fileSize} bytes)`)
 
@@ -70,7 +75,7 @@ MOŽNÉ PŘÍČINY:
 DOPORUČENÍ:
 1. Zkuste otevřít PDF v prohlížeči a zkopírovat text ručně
 2. Nebo převeďte PDF na obrázek a použijte OCR (připravujeme)
-3. Případně požádejte o textovou verziu dokumentu
+3. Případně požádejte o textovou verzi dokumentu
 
 AI může stále analyzovat metadata a název souboru pro základní detekci.`,
           metadata: {
